@@ -241,7 +241,7 @@
 
   <!-- Summary Bar (Weekly) -->
   <div class="summary-section">
-    <div class="summary-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="summary-grid" style="grid-template-columns:repeat(5,1fr)">
       <div class="summary-item active" data-filter="all" onclick="filterByOrigin('all')">
         <div class="summary-label">Weekly Total</div>
         <div class="summary-value" id="sb-total">—</div>
@@ -250,13 +250,17 @@
         <div class="summary-label">Google Alerts</div>
         <div class="summary-value" id="sb-ga">—</div>
       </div>
+      <div class="summary-item" data-filter="law360" onclick="filterByOrigin('law360')">
+        <div class="summary-label">Law360</div>
+        <div class="summary-value" id="sb-law360">—</div>
+      </div>
       <div class="summary-item" data-filter="newsletter" onclick="filterByOrigin('newsletter')">
-        <div class="summary-label">Newsletter</div>
+        <div class="summary-label">RSS Feeds</div>
         <div class="summary-value" id="sb-newsletter">—</div>
       </div>
-      <div class="summary-item" data-filter="congress" onclick="filterByOrigin('congress')">
-        <div class="summary-label">Congress</div>
-        <div class="summary-value" id="sb-congress">—</div>
+      <div class="summary-item" data-filter="meltwater" onclick="filterByOrigin('meltwater')">
+        <div class="summary-label">Meltwater</div>
+        <div class="summary-value" id="sb-meltwater">—</div>
       </div>
     </div>
   </div>
@@ -1094,7 +1098,7 @@ ${articleText}`;
       const data = await res.json();
 
       // Calculate counts by origin for last 7 days
-      const by = { google_alerts: 0, newsletter: 0, congress: 0 };
+      const by = { google_alerts: 0, law360: 0, newsletter: 0, meltwater: 0 };
       const filtered = Array.isArray(data) ? data : [];
 
       for (const m of filtered) {
@@ -1105,9 +1109,6 @@ ${articleText}`;
 
         // Map RSS to Google Alerts (RSS articles are part of Google Alerts)
         if (origin === "rss") origin = "google_alerts";
-
-        // Skip Meltwater - it has its own dashboard
-        if (origin === "meltwater") continue;
 
         if (by.hasOwnProperty(origin)) {
           by[origin]++;
@@ -1121,9 +1122,10 @@ ${articleText}`;
       const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmt(val); };
 
       setText('sb-total',      total);
-      setText('sb-ga',         by.google_alerts || 0);  // Fixed: use google_alerts origin
+      setText('sb-ga',         by.google_alerts || 0);
+      setText('sb-law360',     by.law360 || 0);
       setText('sb-newsletter', by.newsletter || 0);
-      setText('sb-congress',   by.congress || 0);
+      setText('sb-meltwater',  by.meltwater || 0);
 
     } catch(e) {
       console.error('Error loading summary:', e);
