@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **media monitoring and PR alerting system** that:
-- Collects mentions from RSS feeds, Google Alerts, Meltwater webhooks, and newsletters
+This is the **AI Digest for Lawyers** - a media monitoring and alerting system that:
+- Collects AI and legal tech news from RSS feeds, Google Alerts, Law360, Meltwater, and newsletters
+- Educates lawyers on effective AI use in legal practice
+- Tracks new case law and regulatory developments related to AI
 - Stores and deduplicates articles in Redis (Upstash)
 - Provides a web dashboard to view mentions and analytics
 - Runs automated collection via Vercel cron jobs
-- Focuses on China-related media monitoring
+- Focuses on AI in legal practice, legal tech, and AI-related case law
 
 ## Architecture
 
@@ -20,15 +22,14 @@ This is a **media monitoring and PR alerting system** that:
 
 **Key Components**:
 - `collect.js` - Main RSS collection cron job (runs every 4 hours via vercel.json)
-- `congress_collect.js` - Federal legislation collector (runs every 4 hours)
-- `newsletter_rss_collect.js` - Newsletter RSS collector with China/Chinese filtering (runs every 4 hours)
-- `meltwater_collect.js` - Meltwater API collector for searchid 27861003 (runs every 4 hours)
+- `newsletter_rss_collect.js` - Newsletter RSS collector with AI/legal keyword filtering (runs every 4 hours)
+- `meltwater_collect.js` - Meltwater API collector for searchid 27864701 (runs every 4 hours)
 - `meltwater_webhook.js` - Receives real-time Meltwater alerts (webhook)
 - `ga_webhook.js` - Receives Google Alerts via webhook
 - `summary.js` - API endpoint that returns dashboard data
-- `meltwater_summary.js` - API endpoint for Meltwater searchid 27861003 data
+- `meltwater_summary.js` - API endpoint for Meltwater searchid 27864701 data
 - `index.html` - Main dashboard frontend (no build step)
-- `meltwater.html` - Dedicated Meltwater dashboard for searchid 27861003
+- `meltwater.html` - Dedicated Meltwater dashboard for searchid 27864701
 
 **Data Storage**:
 - Uses Upstash Redis with sorted sets for time-ordered mentions
@@ -41,15 +42,14 @@ This is a **media monitoring and PR alerting system** that:
 Required for production:
 - `STORAGE_KV_REST_API_URL` - Upstash Redis URL (NEW naming convention)
 - `STORAGE_KV_REST_API_TOKEN` - Upstash Redis token (NEW naming convention)
-- `RSS_FEEDS` - Semicolon or comma-separated list of RSS feed URLs
-- `KEYWORDS` - Comma-separated keywords to match (optional - accepts all if empty)
-- `CONGRESS_API_KEY` - Congress.gov API key for federal legislation
+- `RSS_FEEDS` - Semicolon or comma-separated list of RSS feed URLs (legal tech & news sources)
+- `KEYWORDS` - Comma-separated AI/legal keywords to match (optional - accepts all if empty)
 - `ALERT_KEYWORDS_URGENT` - High-priority keywords (optional)
 - `RESEND_API_KEY` - For email notifications (optional)
 - `GA_WEBHOOK_SECRET` - Google Alerts webhook auth (optional)
 - `NEWSLETTER_WEBHOOK_SECRET` - Newsletter webhook auth (optional)
 - `NEWSLETTER_RSS_FEEDS` - Semicolon or comma-separated list of newsletter RSS feed URLs (optional)
-- `MELTWATER_API_KEY` - Meltwater API authentication key for searchid 27861003 (optional)
+- `MELTWATER_API_KEY` - Meltwater API authentication key for searchid 27864701 (optional)
 
 ## Development Commands
 

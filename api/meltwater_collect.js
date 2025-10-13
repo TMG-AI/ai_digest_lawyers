@@ -1,5 +1,5 @@
 // /api/meltwater_collect.js
-// Collects articles from Meltwater API for searchid 27861003
+// Collects articles from Meltwater API for searchid 27864701 (AI Digest for Lawyers)
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
@@ -75,7 +75,7 @@ function normalizeSentiment(doc) {
 export default async function handler(req, res) {
   // Load environment variables inside handler for better reliability
   const MELTWATER_API_KEY = process.env.MELTWATER_API_KEY;
-  const MELTWATER_SEARCH_ID = "27861003"; // HSG dashboard search ID
+  const MELTWATER_SEARCH_ID = "27864701"; // AI Digest for Lawyers search ID
 
   try {
     // Check if Meltwater API is configured

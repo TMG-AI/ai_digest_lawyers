@@ -1,5 +1,5 @@
 // /api/newsletter_rss_collect.js
-// Collects newsletter RSS feeds and filters for China/Chinese keywords
+// Collects newsletter RSS feeds and filters for AI/legal keywords
 import { Redis } from "@upstash/redis";
 import Parser from "rss-parser";
 
@@ -33,8 +33,14 @@ const SEEN_ID = "mentions:seen";
 const SEEN_LINK = "mentions:seen:canon";
 const RETENTION_DAYS = 14; // Keep articles for 14 days
 
-// Newsletter-specific keywords (China/Chinese focus)
-const CHINA_KEYWORDS = ["china", "chinese"];
+// Newsletter-specific keywords (AI/Legal focus)
+const AI_LEGAL_KEYWORDS = [
+  "artificial intelligence", "generative ai", "ai", "chatgpt", "claude",
+  "microsoft copilot", "harvey", "harvey ai", "cocounsel", "lexis+ ai", "westlaw precision ai",
+  "lawyer", "lawyers", "attorney", "attorneys", "law firm", "legal research",
+  "e-discovery", "document review", "drafting", "brief writing", "discovery",
+  "compliance", "contracts", "billing", "marketing", "ethics", "sanctions"
+];
 
 // Parse feeds from environment variable (comma or semicolon separated)
 const NEWSLETTER_RSS_FEEDS = (process.env.NEWSLETTER_RSS_FEEDS || "")
@@ -87,11 +93,11 @@ function extractItemLink(e) {
   return (raw || "").trim();
 }
 
-function matchesChinaKeywords(text) {
+function matchesAILegalKeywords(text) {
   const t = (text || "").toLowerCase();
   const matched = [];
 
-  for (const keyword of CHINA_KEYWORDS) {
+  for (const keyword of AI_LEGAL_KEYWORDS) {
     if (t.includes(keyword)) {
       matched.push(keyword);
     }
@@ -130,7 +136,7 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`Newsletter RSS collection starting: ${NEWSLETTER_RSS_FEEDS.length} feeds, filtering for China/Chinese`);
+    console.log(`Newsletter RSS collection starting: ${NEWSLETTER_RSS_FEEDS.length} feeds, filtering for AI/legal keywords`);
 
     for (const url of NEWSLETTER_RSS_FEEDS) {
       try {
@@ -142,12 +148,12 @@ export default async function handler(req, res) {
           const sum = e.contentSnippet || e.content || e.summary || e.description || "";
           const link = extractItemLink(e);
 
-          // Filter for China/Chinese keywords in title or content
-          const matched = matchesChinaKeywords(`${title}\n${sum}\n${feedTitle}`);
+          // Filter for AI/legal keywords in title or content
+          const matched = matchesAILegalKeywords(`${title}\n${sum}\n${feedTitle}`);
 
           if (!matched.length) {
             skipped++;
-            continue; // Skip articles without China keywords
+            continue; // Skip articles without AI/legal keywords
           }
 
           found++;
@@ -212,7 +218,7 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log(`Newsletter RSS collection complete: ${found} China-related articles found, ${stored} stored, ${skipped} skipped`);
+    console.log(`Newsletter RSS collection complete: ${found} AI/legal articles found, ${stored} stored, ${skipped} skipped`);
 
     res.status(200).json({
       ok: true,

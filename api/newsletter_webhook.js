@@ -1,5 +1,5 @@
 // /api/newsletter_webhook.js
-// Receives filtered newsletter articles from n8n (pre-filtered for "China" or "Chinese")
+// Receives filtered newsletter articles from n8n (pre-filtered for AI/legal keywords)
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({

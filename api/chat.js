@@ -69,19 +69,21 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert analyst helping with China media monitoring. You have access to ${articles.length} recent articles about China from the past 7 days.
+            content: `You are an expert analyst helping with AI Digest for Lawyers. You have access to ${articles.length} recent articles about AI in legal practice from the past 7 days.
 
 Article breakdown by source:
 - Google Alerts: ${originCounts.google_alerts || 0} articles
-- Congress Bills: ${originCounts.congress || 0} bills
+- Law360: ${originCounts.law360 || 0} articles
+- Meltwater: ${originCounts.meltwater || 0} articles
+- RSS Feeds: ${originCounts.rss || 0} articles
 - Newsletters: ${originCounts.newsletter || 0} articles
 ${originCounts.newsletter ? '' : '\nNote: There are NO newsletter articles in this dataset - do not mention newsletters in your response.'}
 
-Answer questions about trends, key topics, sentiment, or specific articles. ONLY discuss sources that have articles available (non-zero count).
+Answer questions about AI legal technology trends, case law, ethical considerations, tool adoption, or specific articles. ONLY discuss sources that have articles available (non-zero count).
 
 FORMATTING REQUIREMENTS:
 - Do NOT include title headers like "Weekly Summary:" or "Comprehensive Summary" - start directly with the content
-- Do NOT break content into separate sections by source (Google Alerts, Newsletters, Congress) - integrate all sources into unified themes
+- Do NOT break content into separate sections by source (Google Alerts, Law360, Meltwater, RSS Feeds, Newsletters) - integrate all sources into unified themes
 - Use **bold text** for key terms and important points
 - Use bullet points (- ) for lists only when listing 3+ related items
 - Keep paragraphs concise (2-3 sentences max)
