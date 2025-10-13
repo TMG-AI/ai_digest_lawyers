@@ -40,8 +40,8 @@ This is the **AI Digest for Lawyers** - a media monitoring and alerting system t
 ## Environment Variables
 
 Required for production:
-- `STORAGE_KV_REST_API_URL` - Upstash Redis URL (NEW naming convention)
-- `STORAGE_KV_REST_API_TOKEN` - Upstash Redis token (NEW naming convention)
+- `KV_REST_API_URL` - Upstash Redis URL (NEW naming convention)
+- `KV_REST_API_TOKEN` - Upstash Redis token (NEW naming convention)
 - `RSS_FEEDS` - Semicolon or comma-separated list of RSS feed URLs (legal tech & news sources)
 - `KEYWORDS` - Comma-separated AI/legal keywords to match (optional - accepts all if empty)
 - `ALERT_KEYWORDS_URGENT` - High-priority keywords (optional)
