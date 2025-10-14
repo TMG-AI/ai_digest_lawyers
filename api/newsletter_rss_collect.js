@@ -33,13 +33,23 @@ const SEEN_ID = "mentions:seen";
 const SEEN_LINK = "mentions:seen:canon";
 const RETENTION_DAYS = 14; // Keep articles for 14 days
 
-// Newsletter-specific keywords (AI/Legal focus)
-const AI_LEGAL_KEYWORDS = [
-  "artificial intelligence", "generative ai", "ai", "chatgpt", "claude",
-  "microsoft copilot", "harvey", "harvey ai", "cocounsel", "lexis+ ai", "westlaw precision ai",
-  "lawyer", "lawyers", "attorney", "attorneys", "law firm", "legal research",
-  "e-discovery", "document review", "drafting", "brief writing", "discovery",
-  "compliance", "contracts", "billing", "marketing", "ethics", "sanctions"
+// Newsletter-specific keywords (AI focus only)
+const AI_KEYWORDS = [
+  "artificial intelligence",
+  "generative ai",
+  "ai",
+  "chatgpt",
+  "claude",
+  "microsoft copilot",
+  "copilot",
+  "harvey",
+  "harvey ai",
+  "cocounsel",
+  "lexis+ ai",
+  "westlaw precision ai",
+  "machine learning",
+  "large language model",
+  "llm"
 ];
 
 // Parse feeds from environment variable (comma or semicolon separated)
@@ -93,11 +103,11 @@ function extractItemLink(e) {
   return (raw || "").trim();
 }
 
-function matchesAILegalKeywords(text) {
+function matchesAIKeywords(text) {
   const t = (text || "").toLowerCase();
   const matched = [];
 
-  for (const keyword of AI_LEGAL_KEYWORDS) {
+  for (const keyword of AI_KEYWORDS) {
     // Use word boundary regex to avoid false positives like "China" matching "ai"
     // Escape special regex characters in the keyword
     const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -141,7 +151,7 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`Newsletter RSS collection starting: ${NEWSLETTER_RSS_FEEDS.length} feeds, filtering for AI/legal keywords`);
+    console.log(`Newsletter RSS collection starting: ${NEWSLETTER_RSS_FEEDS.length} feeds, filtering for AI keywords`);
 
     for (const url of NEWSLETTER_RSS_FEEDS) {
       try {
@@ -153,12 +163,12 @@ export default async function handler(req, res) {
           const sum = e.contentSnippet || e.content || e.summary || e.description || "";
           const link = extractItemLink(e);
 
-          // Filter for AI/legal keywords in title or content
-          const matched = matchesAILegalKeywords(`${title}\n${sum}\n${feedTitle}`);
+          // Filter for AI keywords in title or content
+          const matched = matchesAIKeywords(`${title}\n${sum}\n${feedTitle}`);
 
           if (!matched.length) {
             skipped++;
-            continue; // Skip articles without AI/legal keywords
+            continue; // Skip articles without AI keywords
           }
 
           found++;
@@ -223,7 +233,7 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log(`Newsletter RSS collection complete: ${found} AI/legal articles found, ${stored} stored, ${skipped} skipped`);
+    console.log(`Newsletter RSS collection complete: ${found} AI articles found, ${stored} stored, ${skipped} skipped`);
 
     res.status(200).json({
       ok: true,

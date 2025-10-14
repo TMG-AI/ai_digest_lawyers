@@ -9,19 +9,29 @@ const ZSET = "mentions:z";
 const SEEN_LINK = "mentions:seen:canon";
 const SEEN_ID = "mentions:seen";
 
-// Check if title/content contains AI/legal keywords (matching newsletter_rss_collect.js)
-const AI_LEGAL_KEYWORDS = [
-  "artificial intelligence", "generative ai", "ai", "chatgpt", "claude",
-  "microsoft copilot", "harvey", "harvey ai", "cocounsel", "lexis+ ai", "westlaw precision ai",
-  "lawyer", "lawyers", "attorney", "attorneys", "law firm", "legal research",
-  "e-discovery", "document review", "drafting", "brief writing", "discovery",
-  "compliance", "contracts", "billing", "marketing", "ethics", "sanctions"
+// Check if title/content contains AI keywords
+const AI_KEYWORDS = [
+  "artificial intelligence",
+  "generative ai",
+  "ai",
+  "chatgpt",
+  "claude",
+  "microsoft copilot",
+  "copilot",
+  "harvey",
+  "harvey ai",
+  "cocounsel",
+  "lexis+ ai",
+  "westlaw precision ai",
+  "machine learning",
+  "large language model",
+  "llm"
 ];
 
-function hasAILegalKeywords(text) {
+function hasAIKeywords(text) {
   const textLower = (text || "").toLowerCase();
 
-  for (const keyword of AI_LEGAL_KEYWORDS) {
+  for (const keyword of AI_KEYWORDS) {
     // Use word boundary regex to avoid false positives like "China" matching "ai"
     // Escape special regex characters in the keyword
     const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -61,9 +71,9 @@ export default async function handler(req, res) {
         continue; // Skip non-newsletter articles (Google Alerts, Law360, Meltwater are already filtered)
       }
 
-      // Check if title or summary has AI/legal keywords
+      // Check if title or summary has AI keywords
       const titleAndSummary = `${article.title || ""} ${article.summary || ""}`;
-      if (!hasAILegalKeywords(titleAndSummary)) {
+      if (!hasAIKeywords(titleAndSummary)) {
         toRemove.push(articleStr);
         if (article.canon) urlsToRemove.push(article.canon);
         if (article.id) idsToRemove.push(article.id);
