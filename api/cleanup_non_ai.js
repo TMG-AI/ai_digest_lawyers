@@ -145,6 +145,8 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       ok: true,
+      version: "v2_byScore_14days",
+      timeRange: `${fourteenDaysAgo} to ${now}`,
       scanned,
       newsletterCount,
       removed,
