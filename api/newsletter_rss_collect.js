@@ -132,6 +132,17 @@ function toEpoch(d) {
   return Number.isFinite(t) ? Math.floor(t / 1000) : Math.floor(Date.now() / 1000);
 }
 
+// Filter out press releases
+function isPressRelease(title, summary, source) {
+  const text = `${title} ${summary} ${source}`.toLowerCase();
+  const pressReleaseKeywords = [
+    'prnewswire', 'pr newswire', 'business wire', 'businesswire',
+    'pr web', 'prweb', 'globenewswire', 'globe newswire',
+    'accesswire', 'press release', 'news release'
+  ];
+  return pressReleaseKeywords.some(keyword => text.includes(keyword));
+}
+
 export default async function handler(req, res) {
   try {
     let found = 0, stored = 0, skipped = 0, errors = [];
@@ -162,6 +173,13 @@ export default async function handler(req, res) {
           const title = (e.title || "").trim();
           const sum = e.contentSnippet || e.content || e.summary || e.description || "";
           const link = extractItemLink(e);
+
+          // Filter out press releases FIRST
+          if (isPressRelease(title, sum, feedTitle)) {
+            console.log(`[Newsletter RSS] Skipping press release: "${title}" from ${feedTitle}`);
+            skipped++;
+            continue;
+          }
 
           // Filter for AI keywords in title or content
           const matched = matchesAIKeywords(`${title}\n${sum}\n${feedTitle}`);

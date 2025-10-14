@@ -20,7 +20,7 @@ function toObj(x) {
 
 async function getMeltwaterFromAPI() {
   const MELTWATER_API_KEY = process.env.MELTWATER_API_KEY;
-  const SEARCH_ID = '27655196';
+  const SEARCH_ID = '27864701'; // AI Digest for Lawyers
   
   if (!MELTWATER_API_KEY) {
     console.log('No Meltwater API key - will use Redis data only');
@@ -180,11 +180,26 @@ export default async function handler(req, res) {
       );
     }
 
-    // 4. Deduplicate by ID (keep first occurrence)
+    // 4. Deduplicate by ID AND by title+summary (keep first occurrence)
     const seenIds = new Set();
+    const seenTitleSummary = new Set();
     finalItems = finalItems.filter(m => {
-      if (!m.id || seenIds.has(m.id)) return false;
-      seenIds.add(m.id);
+      // Check ID deduplication
+      if (m.id && seenIds.has(m.id)) return false;
+      if (m.id) seenIds.add(m.id);
+
+      // Check title+summary deduplication (even if source is different)
+      const title = (m.title || '').trim().toLowerCase();
+      const summary = (m.summary || '').trim().toLowerCase();
+      if (title && summary) {
+        const key = `${title}|||${summary}`;
+        if (seenTitleSummary.has(key)) {
+          console.log(`Filtering duplicate: "${m.title}" from ${m.source}`);
+          return false;
+        }
+        seenTitleSummary.add(key);
+      }
+
       return true;
     });
 

@@ -99,6 +99,17 @@ function extractItemLink(e) {
 }
 function idFromCanonical(c) { let h=0; for (let i=0;i<c.length;i++) h=(h*31+c.charCodeAt(i))>>>0; return `m_${h.toString(16)}`; }
 function toEpoch(d){ const t=Date.parse(d); return Number.isFinite(t)?Math.floor(t/1000):Math.floor(Date.now()/1000); }
+
+// Filter out press releases
+function isPressRelease(title, summary, source) {
+  const text = `${title} ${summary} ${source}`.toLowerCase();
+  const pressReleaseKeywords = [
+    'prnewswire', 'pr newswire', 'business wire', 'businesswire',
+    'pr web', 'prweb', 'globenewswire', 'globe newswire',
+    'accesswire', 'press release', 'news release'
+  ];
+  return pressReleaseKeywords.some(keyword => text.includes(keyword));
+}
 const ENABLE_SENTIMENT = (process.env.ENABLE_SENTIMENT || "").toLowerCase() === "true";
 const POS = ["win","surge","rally","gain","positive","bull","record","secure","approve","partnership"];
 const NEG = ["hack","breach","lawsuit","fine","down","drop","negative","bear","investigate","halt","outage","delay","ban"];
@@ -158,6 +169,13 @@ export default async function handler(req, res) {
           const ytDesc = e.mediaDescription || e?.media?.description || e?.mediaContent?.description || "";
           const sum = ytDesc || e.contentSnippet || e.content || e.summary || "";
           const link = extractItemLink(e);
+          const source = displaySource(link, feedTitle);
+
+          // Filter out press releases
+          if (isPressRelease(title, sum, source)) {
+            console.log(`Skipping press release: "${title}" from ${source}`);
+            continue;
+          }
 
           // No keyword filtering - accept all articles from Google Alerts RSS
           const canon = normalizeUrl(link || title);
@@ -177,7 +195,7 @@ export default async function handler(req, res) {
             section: "Google Alerts",
             title: title || "(untitled)",
             link,
-            source: displaySource(link, feedTitle),
+            source,
             summary: sum,
             origin: "google_alerts",
             published_ts: ts,

@@ -71,6 +71,17 @@ function normalizeSentiment(doc) {
   return undefined;
 }
 
+// Filter out press releases
+function isPressRelease(title, summary, source) {
+  const text = `${title} ${summary} ${source}`.toLowerCase();
+  const pressReleaseKeywords = [
+    'prnewswire', 'pr newswire', 'business wire', 'businesswire',
+    'pr web', 'prweb', 'globenewswire', 'globe newswire',
+    'accesswire', 'press release', 'news release'
+  ];
+  return pressReleaseKeywords.some(keyword => text.includes(keyword));
+}
+
 
 export default async function handler(req, res) {
   // Load environment variables inside handler for better reliability
@@ -196,6 +207,13 @@ export default async function handler(req, res) {
 
         const source = doc.source?.name || doc.source_name || doc.media?.name || 'Meltwater';
         const publishedDate = doc.published_date || doc.document?.published_date || doc.date || new Date().toISOString();
+
+        // Filter out press releases
+        if (isPressRelease(title, extractedSummary, source)) {
+          console.log(`[Meltwater] Skipping press release: "${title}" from ${source}`);
+          skipped++;
+          continue;
+        }
 
         // Deduplicate
         const canon = normalizeUrl(link);
