@@ -98,7 +98,12 @@ function matchesAILegalKeywords(text) {
   const matched = [];
 
   for (const keyword of AI_LEGAL_KEYWORDS) {
-    if (t.includes(keyword)) {
+    // Use word boundary regex to avoid false positives like "China" matching "ai"
+    // Escape special regex characters in the keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+
+    if (regex.test(text)) {
       matched.push(keyword);
     }
   }

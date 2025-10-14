@@ -20,11 +20,18 @@ const AI_LEGAL_KEYWORDS = [
 
 function hasAILegalKeywords(text) {
   const textLower = (text || "").toLowerCase();
+
   for (const keyword of AI_LEGAL_KEYWORDS) {
-    if (textLower.includes(keyword)) {
+    // Use word boundary regex to avoid false positives like "China" matching "ai"
+    // Escape special regex characters in the keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+
+    if (regex.test(text)) {
       return true;
     }
   }
+
   return false;
 }
 
