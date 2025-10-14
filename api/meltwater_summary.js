@@ -1,5 +1,5 @@
 // /api/meltwater_summary.js
-// Returns only Meltwater articles with searchid 27558498
+// Returns only Meltwater articles with searchid 27864701 (AI Digest for Lawyers)
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
@@ -28,13 +28,13 @@ export default async function handler(req, res) {
     const raw = await redis.zrange(ZSET, monthAgo, now, { byScore: true });
     const allMentions = raw.map(toObj).filter(Boolean);
 
-    // Filter for Meltwater origin AND searchid 27861003
+    // Filter for Meltwater origin AND searchid 27864701
     const meltwaterMentions = allMentions.filter(m =>
       (m.origin === 'meltwater' || m.section === 'Meltwater') &&
-      (m.searchid === '27861003' || m.search_id === '27861003')
+      (m.searchid === '27864701' || m.search_id === '27864701')
     );
 
-    console.log(`Meltwater summary: ${meltwaterMentions.length} articles with searchid 27861003`);
+    console.log(`Meltwater summary: ${meltwaterMentions.length} articles with searchid 27864701`);
 
     // Sort by published timestamp (newest first)
     meltwaterMentions.sort((a, b) => (b.published_ts || 0) - (a.published_ts || 0));
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       last30d,
       mentions: meltwaterMentions,
       generated_at: new Date().toISOString(),
-      searchid: '27861003'
+      searchid: '27864701'
     });
   } catch (e) {
     console.error('Meltwater summary error:', e);
