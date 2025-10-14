@@ -41,17 +41,10 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // Only filter RSS/Google Alerts articles, not Law360, Meltwater, or Newsletter
+      // Only filter Newsletter articles (newsletter RSS feeds have AI/legal keyword filtering)
       const origin = (article.origin || "").toLowerCase();
-      if (origin !== "google_alerts" && origin !== "rss") {
-        continue; // Skip non-RSS articles
-      }
-
-      // Check if article is from Law.com (skip filtering)
-      const source = (article.source || "").toLowerCase();
-      const link = (article.link || "").toLowerCase();
-      if (source.includes('law.com') || link.includes('law.com')) {
-        continue; // Skip Law.com articles
+      if (origin !== "newsletter" && origin !== "newsletter_rss") {
+        continue; // Skip non-newsletter articles (Google Alerts, Law360, Meltwater are already filtered)
       }
 
       // Check if title has AI keywords
