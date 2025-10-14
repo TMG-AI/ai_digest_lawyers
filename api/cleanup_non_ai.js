@@ -61,13 +61,34 @@ export default async function handler(req, res) {
     const idsToRemove = [];
     const debugInfo = [];
     const originBreakdown = {};
+    const parseErrors = [];
 
     for (const articleStr of allArticles) {
       scanned++;
       let article;
+
+      // Debug: Check what type of data we're getting
+      if (scanned <= 3) {
+        parseErrors.push({
+          index: scanned,
+          type: typeof articleStr,
+          isObject: typeof articleStr === 'object',
+          hasOrigin: articleStr?.origin !== undefined,
+          preview: JSON.stringify(articleStr).substring(0, 200)
+        });
+      }
+
       try {
-        article = JSON.parse(articleStr);
-      } catch {
+        // If it's already an object, use it directly
+        if (typeof articleStr === 'object' && articleStr !== null) {
+          article = articleStr;
+        } else {
+          article = JSON.parse(articleStr);
+        }
+      } catch (e) {
+        if (scanned <= 3) {
+          parseErrors[parseErrors.length - 1].parseError = e.message;
+        }
         continue;
       }
 
@@ -144,7 +165,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       ok: true,
-      version: "v3_with_origin_breakdown",
+      version: "v4_debug_parse_errors",
       timeRange: `${fourteenDaysAgo} to ${now}`,
       scanned,
       originBreakdown,
@@ -152,6 +173,7 @@ export default async function handler(req, res) {
       removed,
       kept: scanned - removed,
       message: `Cleaned up ${removed} non-AI articles from ${scanned} total articles (${newsletterCount} newsletter articles)`,
+      parseErrors,
       debugInfo
     });
 
