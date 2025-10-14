@@ -155,21 +155,31 @@ export default async function handler(req, res) {
       documentCount: documents.length
     });
 
-    // Sort by reach (descending) and limit to top 100
-    documents.sort((a, b) => {
+    // Filter for articles with AI or "artificial intelligence" in title
+    const aiFilteredDocuments = documents.filter(doc => {
+      const title = (doc.content?.title || doc.title || doc.headline || '').toLowerCase();
+      return title.includes('ai') || title.includes('artificial intelligence');
+    });
+
+    console.log(`[Meltwater] Filtered ${aiFilteredDocuments.length} articles with AI in title (from ${documents.length} total)`);
+
+    // Sort by reach (descending) and limit to top 25
+    aiFilteredDocuments.sort((a, b) => {
       const reachA = a.metrics?.reach || a.metrics?.circulation || 0;
       const reachB = b.metrics?.reach || b.metrics?.circulation || 0;
       return reachB - reachA; // Descending order
     });
 
-    // Limit to top 100 articles by reach
-    const TOP_ARTICLES_LIMIT = 100;
-    if (documents.length > TOP_ARTICLES_LIMIT) {
-      console.log(`[Meltwater] Limiting from ${documents.length} to top ${TOP_ARTICLES_LIMIT} articles by reach`);
-      documents = documents.slice(0, TOP_ARTICLES_LIMIT);
+    // Limit to top 25 articles by reach
+    const TOP_ARTICLES_LIMIT = 25;
+    if (aiFilteredDocuments.length > TOP_ARTICLES_LIMIT) {
+      console.log(`[Meltwater] Limiting from ${aiFilteredDocuments.length} to top ${TOP_ARTICLES_LIMIT} AI articles by reach`);
+      documents = aiFilteredDocuments.slice(0, TOP_ARTICLES_LIMIT);
+    } else {
+      documents = aiFilteredDocuments;
     }
 
-    console.log(`[Meltwater] Processing ${documents.length} articles (sorted by reach)`);
+    console.log(`[Meltwater] Processing ${documents.length} AI articles (sorted by reach)`);
 
     for (const doc of documents) {
       try {
