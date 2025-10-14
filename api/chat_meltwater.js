@@ -39,13 +39,13 @@ export default async function handler(req, res) {
     const raw = await redis.zrange(ZSET, sevenDaysAgo, now, { byScore: true });
     const allArticles = raw.map(toObj).filter(Boolean);
 
-    // Filter for ONLY Meltwater articles with searchid 27861003
+    // Filter for ONLY Meltwater articles with searchid 27864701 (AI Digest for Lawyers)
     const meltwaterArticles = allArticles.filter(a =>
       (a.origin === 'meltwater' || a.section === 'Meltwater') &&
-      (a.searchid === '27861003' || a.search_id === '27861003')
+      (a.searchid === '27864701' || a.search_id === '27864701')
     );
 
-    console.log(`Meltwater Chat: Loading ${meltwaterArticles.length} Meltwater articles for context (filtered from ${allArticles.length} total)`);
+    console.log(`Meltwater Chat: Loading ${meltwaterArticles.length} Meltwater articles for AI Digest (filtered from ${allArticles.length} total)`);
 
     // Prepare article context (limit to key info to save tokens)
     const articleContext = meltwaterArticles.map(a => ({
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert analyst helping with media monitoring from Meltwater (search ID 27861003). You have access to ${meltwaterArticles.length} recent articles from Meltwater from the past 7 days.
+            content: `You are an expert analyst helping with media monitoring from Meltwater (search ID 27864701 - AI Digest for Lawyers). You have access to ${meltwaterArticles.length} recent articles from Meltwater from the past 7 days.
 
 Answer questions about trends, key topics, sentiment, or specific articles from the Meltwater feed.
 

@@ -1,6 +1,9 @@
 // /api/meltwater_webhook.js
 // Receives real-time mentions from Meltwater Streaming API
+// ONLY accepts articles from searchid 27864701 (AI Digest for Lawyers)
 import { Redis } from "@upstash/redis";
+
+const ALLOWED_SEARCH_ID = "27864701"; // AI Digest for Lawyers only
 
 const redis = new Redis({
   url: process.env.KV1_REST_API_URL,
@@ -90,12 +93,20 @@ export default async function handler(req, res) {
 
     for (const doc of documents) {
       try {
+        // Filter: Only accept articles from AI Digest search ID (27864701)
+        const docSearchId = doc.searchid || doc.search_id || payload.searchid || payload.search_id;
+        if (docSearchId && docSearchId !== ALLOWED_SEARCH_ID) {
+          console.log(`[Meltwater Webhook] Skipping article from searchid ${docSearchId} (not ${ALLOWED_SEARCH_ID})`);
+          continue;
+        }
+
         // Debug logging - NEW Meltwater format
         console.log('=== FULL DOCUMENT DEBUG ===');
         console.log('All keys:', Object.keys(doc));
         console.log('Content field:', doc.content);
         console.log('Source field:', doc.source);
         console.log('URL field:', doc.url);
+        console.log('Search ID:', docSearchId);
         console.log('=== END DEBUG ===');
 
         // NEW: Extract title from content field (Meltwater changed format)
@@ -148,7 +159,7 @@ export default async function handler(req, res) {
           sentiment_label: doc.sentiment || null,
           streamed: true, // Mark as streamed
           received_at: new Date().toISOString(),
-          searchid: doc.searchid || doc.search_id || payload.searchid || payload.search_id || null // Capture searchid from document or payload
+          searchid: ALLOWED_SEARCH_ID // Always set to AI Digest search ID
         };
 
         // Store in Redis with timestamp as score
