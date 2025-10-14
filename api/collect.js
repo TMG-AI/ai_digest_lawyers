@@ -145,13 +145,16 @@ export default async function handler(req, res) {
       return;
     }
 
-    // No keyword filtering - collect all articles
-    console.log(`RSS collection starting: ${RSS_FEEDS.length} feeds, no keyword filtering`);
+    // AI keyword filtering for general RSS feeds (except Law.com which is already AI-specific)
+    console.log(`RSS collection starting: ${RSS_FEEDS.length} feeds with AI keyword filtering`);
 
     for (const url of RSS_FEEDS) {
       try {
         const feed = await parser.parseURL(url);
         const feedTitle = feed?.title || url;
+
+        // Check if this is Law.com feed (already AI-specific, no filtering needed)
+        const isLawComFeed = url.toLowerCase().includes('law.com');
 
         for (const e of feed?.items || []) {
           const title = (e.title || "").trim();
@@ -159,7 +162,21 @@ export default async function handler(req, res) {
           const sum = ytDesc || e.contentSnippet || e.content || e.summary || "";
           const link = extractItemLink(e);
 
-          // No keyword filtering - accept all articles
+          // Apply AI keyword filtering (skip for Law.com feed)
+          if (!isLawComFeed) {
+            const titleLower = title.toLowerCase();
+            const hasAIKeyword =
+              titleLower.includes('artificial intelligence') ||
+              titleLower.includes('generative ai') ||
+              titleLower.includes(' ai ') ||
+              titleLower.startsWith('ai ') ||
+              titleLower.endsWith(' ai');
+
+            if (!hasAIKeyword) {
+              continue; // Skip articles without AI keywords
+            }
+          }
+
           const canon = normalizeUrl(link || title);
           if (!canon) continue;
 
