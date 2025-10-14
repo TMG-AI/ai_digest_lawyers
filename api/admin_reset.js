@@ -13,7 +13,7 @@ export default async function handler(req, res){
 
     const end = Math.floor(Date.now()/1000);
     const start = end - 7*24*3600; // scan last 7 days
-    const raw = await redis.zrangebyscore(ZSET, start, end);
+    const raw = await redis.zrange(ZSET, start, end, { byScore: true });
     const keep = [];
     const remove = [];
 

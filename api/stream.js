@@ -29,10 +29,11 @@ export default async function handler(req, res) {
       const now = Math.floor(Date.now() / 1000);
       
       // Get new mentions since last check
-      const newMentions = await redis.zrangebyscore(
+      const newMentions = await redis.zrange(
         'mentions:streamed:z',
         lastCheck,
-        now
+        now,
+        { byScore: true }
       );
       
       if (newMentions.length > 0) {
