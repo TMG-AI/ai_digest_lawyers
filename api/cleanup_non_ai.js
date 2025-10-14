@@ -52,9 +52,11 @@ export default async function handler(req, res) {
 
     let scanned = 0;
     let removed = 0;
+    let newsletterCount = 0;
     const toRemove = [];
     const urlsToRemove = [];
     const idsToRemove = [];
+    const debugInfo = [];
 
     for (const articleStr of allArticles) {
       scanned++;
@@ -71,9 +73,34 @@ export default async function handler(req, res) {
         continue; // Skip non-newsletter articles (Google Alerts, Law360, Meltwater are already filtered)
       }
 
+      newsletterCount++;
+
       // Check if title or summary has AI keywords
       const titleAndSummary = `${article.title || ""} ${article.summary || ""}`;
-      if (!hasAIKeywords(titleAndSummary)) {
+      const hasKeywords = hasAIKeywords(titleAndSummary);
+
+      // Debug: log first 10 newsletter articles
+      if (newsletterCount <= 10) {
+        const matchedKeywords = [];
+        for (const keyword of AI_KEYWORDS) {
+          const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
+          if (regex.test(titleAndSummary)) {
+            matchedKeywords.push(keyword);
+          }
+        }
+
+        debugInfo.push({
+          title: article.title,
+          origin: article.origin,
+          hasKeywords,
+          matchedKeywords: matchedKeywords.length > 0 ? matchedKeywords : "NONE",
+          titlePreview: (article.title || "").substring(0, 100),
+          summaryPreview: (article.summary || "").substring(0, 150)
+        });
+      }
+
+      if (!hasKeywords) {
         toRemove.push(articleStr);
         if (article.canon) urlsToRemove.push(article.canon);
         if (article.id) idsToRemove.push(article.id);
@@ -108,9 +135,11 @@ export default async function handler(req, res) {
     res.status(200).json({
       ok: true,
       scanned,
+      newsletterCount,
       removed,
       kept: scanned - removed,
-      message: `Cleaned up ${removed} non-AI articles from ${scanned} total articles`
+      message: `Cleaned up ${removed} non-AI articles from ${scanned} total articles (${newsletterCount} newsletter articles)`,
+      debugInfo
     });
 
   } catch (e) {
