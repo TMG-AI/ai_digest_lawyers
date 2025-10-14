@@ -9,16 +9,23 @@ const ZSET = "mentions:z";
 const SEEN_LINK = "mentions:seen:canon";
 const SEEN_ID = "mentions:seen";
 
-// Check if title contains AI-related keywords
-function hasAIKeywords(title) {
-  const titleLower = (title || "").toLowerCase();
-  return (
-    titleLower.includes('artificial intelligence') ||
-    titleLower.includes('generative ai') ||
-    titleLower.includes(' ai ') ||
-    titleLower.startsWith('ai ') ||
-    titleLower.endsWith(' ai')
-  );
+// Check if title/content contains AI/legal keywords (matching newsletter_rss_collect.js)
+const AI_LEGAL_KEYWORDS = [
+  "artificial intelligence", "generative ai", "ai", "chatgpt", "claude",
+  "microsoft copilot", "harvey", "harvey ai", "cocounsel", "lexis+ ai", "westlaw precision ai",
+  "lawyer", "lawyers", "attorney", "attorneys", "law firm", "legal research",
+  "e-discovery", "document review", "drafting", "brief writing", "discovery",
+  "compliance", "contracts", "billing", "marketing", "ethics", "sanctions"
+];
+
+function hasAILegalKeywords(text) {
+  const textLower = (text || "").toLowerCase();
+  for (const keyword of AI_LEGAL_KEYWORDS) {
+    if (textLower.includes(keyword)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -47,8 +54,9 @@ export default async function handler(req, res) {
         continue; // Skip non-newsletter articles (Google Alerts, Law360, Meltwater are already filtered)
       }
 
-      // Check if title has AI keywords
-      if (!hasAIKeywords(article.title)) {
+      // Check if title or summary has AI/legal keywords
+      const titleAndSummary = `${article.title || ""} ${article.summary || ""}`;
+      if (!hasAILegalKeywords(titleAndSummary)) {
         toRemove.push(articleStr);
         if (article.canon) urlsToRemove.push(article.canon);
         if (article.id) idsToRemove.push(article.id);
