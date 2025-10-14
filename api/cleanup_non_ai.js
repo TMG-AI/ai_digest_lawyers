@@ -60,6 +60,7 @@ export default async function handler(req, res) {
     const urlsToRemove = [];
     const idsToRemove = [];
     const debugInfo = [];
+    const originBreakdown = {};
 
     for (const articleStr of allArticles) {
       scanned++;
@@ -71,13 +72,11 @@ export default async function handler(req, res) {
       }
 
       // Debug: Check what origins we're actually seeing
-      const rawOrigin = article.origin || "";
+      const rawOrigin = article.origin || "no_origin";
       const origin = rawOrigin.toLowerCase();
 
-      // Log first 5 articles to see what origins exist
-      if (scanned <= 5) {
-        console.log(`Article ${scanned}: origin="${rawOrigin}" (lowercase="${origin}")`);
-      }
+      // Count all origins
+      originBreakdown[origin] = (originBreakdown[origin] || 0) + 1;
 
       // Only filter Newsletter articles (newsletter RSS feeds have AI/legal keyword filtering)
       if (origin !== "newsletter" && origin !== "newsletter_rss") {
@@ -145,9 +144,10 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       ok: true,
-      version: "v2_byScore_14days",
+      version: "v3_with_origin_breakdown",
       timeRange: `${fourteenDaysAgo} to ${now}`,
       scanned,
+      originBreakdown,
       newsletterCount,
       removed,
       kept: scanned - removed,
