@@ -47,8 +47,11 @@ function hasAIKeywords(text) {
 
 export default async function handler(req, res) {
   try {
-    // Get all articles from Redis
-    const allArticles = await redis.zrange(ZSET, 0, -1);
+    // Get articles from last 14 days (matching RETENTION_DAYS)
+    const now = Math.floor(Date.now() / 1000);
+    const fourteenDaysAgo = now - (14 * 24 * 60 * 60);
+
+    const allArticles = await redis.zrange(ZSET, fourteenDaysAgo, now, { byScore: true });
 
     let scanned = 0;
     let removed = 0;
@@ -67,8 +70,16 @@ export default async function handler(req, res) {
         continue;
       }
 
+      // Debug: Check what origins we're actually seeing
+      const rawOrigin = article.origin || "";
+      const origin = rawOrigin.toLowerCase();
+
+      // Log first 5 articles to see what origins exist
+      if (scanned <= 5) {
+        console.log(`Article ${scanned}: origin="${rawOrigin}" (lowercase="${origin}")`);
+      }
+
       // Only filter Newsletter articles (newsletter RSS feeds have AI/legal keyword filtering)
-      const origin = (article.origin || "").toLowerCase();
       if (origin !== "newsletter" && origin !== "newsletter_rss") {
         continue; // Skip non-newsletter articles (Google Alerts, Law360, Meltwater are already filtered)
       }
