@@ -1,7 +1,7 @@
 // Temporary debug endpoint to see raw Meltwater API response
 export default async function handler(req, res) {
   const MELTWATER_API_KEY = process.env.MELTWATER_API_KEY;
-  const MELTWATER_SEARCH_ID = "27861003";
+  const MELTWATER_SEARCH_ID = "27864701"; // AI Digest for Lawyers
 
   try {
     if (!MELTWATER_API_KEY) {

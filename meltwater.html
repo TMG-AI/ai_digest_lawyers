@@ -431,7 +431,7 @@
         if (!r.ok) throw new Error('HTTP '+r.status);
         const response=await r.json();
 
-        // Store all Meltwater mentions (already filtered by searchid 27861003)
+        // Store all Meltwater mentions (already filtered by searchid 27864701)
         allMentions = response.mentions || [];
         let filtered = allMentions;
 
@@ -468,7 +468,7 @@
       }
     }
 
-    // Meltwater dashboard doesn't need origin filtering - only shows searchid 27861003
+    // Meltwater dashboard doesn't need origin filtering - only shows searchid 27864701
 
     document.getElementById('search').addEventListener('input', ()=>{
       clearTimeout(window._t); window._t=setTimeout(loadMentions,250);
@@ -895,7 +895,7 @@ ${articleText}`;
   <script>
   (async function(){
     try{
-      // Fetch Meltwater data with searchid 27861003
+      // Fetch Meltwater data with searchid 27864701
       const res = await fetch('/api/meltwater_summary', { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json();
