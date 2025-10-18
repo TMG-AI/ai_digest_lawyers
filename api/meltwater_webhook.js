@@ -1,224 +1,63 @@
 // /api/meltwater_webhook.js
-// Receives real-time mentions from Meltwater Streaming API
+// Receives real-time mentions from Meltwater Streaming API (Data Streams)
 // ONLY accepts articles from searchid 27864701 (AI Digest for Lawyers)
-import { Redis } from "@upstash/redis";
+// Applies same filters as API collection: AI keywords, press releases, non-US, top 25 by reach
+//
+// Meltwater webhook payload structure:
+// {
+//   "request": {
+//     "company_id": "...",
+//     "hook_id": "...",
+//     "inputs": ["search_id or parameters"]
+//   },
+//   "documents": [ /* array of document objects */ ]
+// }
 
-const ALLOWED_SEARCH_ID = "27864701"; // AI Digest for Lawyers only
+import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
   url: process.env.KV1_REST_API_URL,
   token: process.env.KV1_REST_API_TOKEN,
 });
 
+const ALLOWED_SEARCH_ID = "27864701"; // AI Digest for Lawyers only
 const ZSET = "mentions:z";
-const STREAM_ZSET = "mentions:streamed:z"; // Separate set for streamed mentions
-const COUNTER_KEY = "meltwater:stream:count";
-const DAILY_COUNTER_KEY = "meltwater:stream:daily";
+const SEEN_ID = "mentions:seen";
+const SEEN_LINK = "mentions:seen:canon";
+const RETENTION_DAYS = 14; // Keep articles for 14 days
+const TOP_ARTICLES_LIMIT = 25; // Maximum articles per day
 
-// Helper to get today's date key for daily counters
-function getTodayKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${DAILY_COUNTER_KEY}:${year}-${month}-${day}`;
-}
+// Daily tracking for top 25 limit
+const DAILY_ARTICLES_KEY = "meltwater:webhook:daily"; // Stores today's articles as sorted set by reach
 
-// Verify webhook signature (optional but recommended)
-function verifyWebhookSignature(req, secret) {
-  // Meltwater may send a signature header for verification
-  // Implement based on their documentation
-  const signature = req.headers['x-meltwater-signature'];
-  if (!signature || !secret) return true; // Skip if not configured
-  
-  // Implement HMAC verification if Meltwater provides it
-  // const expectedSignature = crypto.createHmac('sha256', secret)
-  //   .update(JSON.stringify(req.body))
-  //   .digest('hex');
-  // return signature === expectedSignature;
-  
-  return true; // For now, accept all
-}
-
-export default async function handler(req, res) {
-  // Only accept POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+// Helper functions (copied from meltwater_collect.js for consistency)
+function normalizeUrl(u) {
   try {
-    // Optional: Verify webhook signature
-    const webhookSecret = process.env.MELTWATER_WEBHOOK_SECRET;
-    if (webhookSecret && !verifyWebhookSignature(req, webhookSecret)) {
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-
-    // Parse the webhook payload
-    const payload = req.body;
-    console.log('Received Meltwater webhook:', {
-      type: payload.type,
-      documentCount: payload.documents?.length || 0
-    });
-
-    // Handle different webhook event types
-    if (payload.type === 'test' || payload.test === true) {
-      // This is a test webhook from Meltwater
-      console.log('Test webhook received');
-      return res.status(200).json({ 
-        status: 'success', 
-        message: 'Test webhook received successfully' 
-      });
-    }
-
-    // Extract documents/mentions from the payload
-    let documents = [];
-    
-    // Meltwater may send documents in different formats
-    if (payload.documents && Array.isArray(payload.documents)) {
-      documents = payload.documents;
-    } else if (payload.results && Array.isArray(payload.results)) {
-      documents = payload.results;
-    } else if (Array.isArray(payload)) {
-      documents = payload;
-    } else if (payload.data && Array.isArray(payload.data)) {
-      documents = payload.data;
-    }
-
-    console.log(`Processing ${documents.length} documents from webhook`);
-
-    // Process and store each document
-    const storedMentions = [];
-    const timestamp = Math.floor(Date.now() / 1000);
-    const todayKey = getTodayKey();
-
-    for (const doc of documents) {
-      try {
-        // Filter: Only accept articles from AI Digest search ID (27864701)
-        const docSearchId = doc.searchid || doc.search_id || payload.searchid || payload.search_id;
-        if (docSearchId && docSearchId !== ALLOWED_SEARCH_ID) {
-          console.log(`[Meltwater Webhook] Skipping article from searchid ${docSearchId} (not ${ALLOWED_SEARCH_ID})`);
-          continue;
-        }
-
-        // Debug logging - NEW Meltwater format
-        console.log('=== FULL DOCUMENT DEBUG ===');
-        console.log('All keys:', Object.keys(doc));
-        console.log('Content field:', doc.content);
-        console.log('Source field:', doc.source);
-        console.log('URL field:', doc.url);
-        console.log('Search ID:', docSearchId);
-        console.log('=== END DEBUG ===');
-
-        // NEW: Extract title from content field (Meltwater changed format)
-        let extractedTitle = '';
-        if (doc.content && typeof doc.content === 'string') {
-          // Use first sentence as title
-          extractedTitle = doc.content.split('\n')[0].split('.')[0].trim();
-          if (extractedTitle.length > 100) {
-            extractedTitle = extractedTitle.substring(0, 100) + '...';
-          }
-        } else if (doc.content && typeof doc.content === 'object') {
-          extractedTitle = doc.content.title || doc.content.headline || '';
-        }
-        if (!extractedTitle) {
-          extractedTitle = 'Untitled';
-        }
-
-        // NEW: Extract summary from content field
-        let extractedSummary = '';
-        if (doc.content && typeof doc.content === 'string') {
-          extractedSummary = doc.content.length > 300 
-            ? doc.content.substring(0, 300) + '...'
-            : doc.content;
-        } else if (doc.content && typeof doc.content === 'object') {
-          extractedSummary = doc.content.description || doc.content.summary || '';
-        }
-
-        // NEW: Extract source from source field
-        let extractedSource = '';
-        if (doc.source && typeof doc.source === 'object') {
-          extractedSource = doc.source.name || doc.source.title || 'Meltwater';
-        } else if (doc.source && typeof doc.source === 'string') {
-          extractedSource = doc.source;
-        } else {
-          extractedSource = 'Meltwater';
-        }
-
-        const mention = {
-          id: `mw_stream_${doc.id || doc.external_id || timestamp}_${Math.random()}`,
-          title: extractedTitle,
-          link: doc.url || '#',
-          source: extractedSource,
-          section: 'Meltwater',
-          origin: 'meltwater',
-          published: doc.published_date || new Date().toISOString(),
-          published_ts: doc.published_date ? Math.floor(Date.parse(doc.published_date) / 1000) : timestamp,
-          summary: extractedSummary,
-          reach: doc.metrics?.reach || doc.metrics?.circulation || 0,
-          sentiment: normalizeSentiment(doc),
-          sentiment_label: doc.sentiment || null,
-          streamed: true, // Mark as streamed
-          received_at: new Date().toISOString(),
-          searchid: ALLOWED_SEARCH_ID // Always set to AI Digest search ID
-        };
-
-        // Store in Redis with timestamp as score
-        const mentionJson = JSON.stringify(mention);
-        
-        // Add to both main set and streamed set
-        await redis.zadd(ZSET, {
-          score: mention.published_ts,
-          member: mentionJson
-        });
-        
-        await redis.zadd(STREAM_ZSET, {
-          score: timestamp,
-          member: mentionJson
-        });
-
-        // Increment counters
-        await redis.incr(COUNTER_KEY);
-        await redis.incr(todayKey);
-
-        storedMentions.push(mention);
-        
-        console.log(`Stored mention: ${mention.title}`);
-      } catch (error) {
-        console.error('Error processing document:', error, doc);
-      }
-    }
-
-    // Set expiry on daily counter (expires after 7 days)
-    if (documents.length > 0) {
-      await redis.expire(todayKey, 7 * 24 * 60 * 60);
-    }
-
-    // Optional: Trigger real-time update to connected clients
-    // This could be via WebSockets, Server-Sent Events, or Pusher
-    if (storedMentions.length > 0) {
-      await notifyClients(storedMentions);
-    }
-
-    // Respond to Meltwater
-    res.status(200).json({
-      status: 'success',
-      processed: storedMentions.length,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Webhook processing error:', error);
-    
-    // Return 200 to prevent Meltwater from retrying
-    // Log the error for debugging
-    res.status(200).json({
-      status: 'error',
-      message: 'Internal processing error, logged for review'
-    });
+    const url = new URL(u);
+    url.hash = "";
+    ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","utm_id",
+     "mc_cid","mc_eid","ref","fbclid","gclid","igshid"].forEach(p => url.searchParams.delete(p));
+    if ([...url.searchParams.keys()].length === 0) url.search = "";
+    url.hostname = url.hostname.toLowerCase();
+    let s = url.toString();
+    if (s.endsWith("/")) s = s.slice(0, -1);
+    return s;
+  } catch {
+    return (u || "").trim();
   }
 }
 
-// Helper functions
+function idFromCanonical(c) {
+  let h = 0;
+  for (let i = 0; i < c.length; i++) h = (h * 31 + c.charCodeAt(i)) >>> 0;
+  return `mw_webhook_${h.toString(16)}`;
+}
+
+function toEpoch(d) {
+  const t = Date.parse(d);
+  return Number.isFinite(t) ? Math.floor(t / 1000) : Math.floor(Date.now() / 1000);
+}
+
 function normalizeSentiment(doc) {
   if (typeof doc.sentiment_score === 'number') {
     return doc.sentiment_score;
@@ -230,36 +69,262 @@ function normalizeSentiment(doc) {
   return undefined;
 }
 
+// Filter out press releases
+function isPressRelease(title, summary, source) {
+  const text = `${title} ${summary} ${source}`.toLowerCase();
+  const pressReleaseKeywords = [
+    'prnewswire', 'pr newswire', 'business wire', 'businesswire',
+    'pr web', 'prweb', 'globenewswire', 'globe newswire',
+    'accesswire', 'press release', 'news release'
+  ];
+  return pressReleaseKeywords.some(keyword => text.includes(keyword));
+}
 
-// Optional: Notify connected clients of new mentions
-async function notifyClients(mentions) {
-  // If using Pusher or similar service
-  if (process.env.PUSHER_APP_ID) {
-    // const Pusher = require('pusher');
-    // const pusher = new Pusher({
-    //   appId: process.env.PUSHER_APP_ID,
-    //   key: process.env.PUSHER_KEY,
-    //   secret: process.env.PUSHER_SECRET,
-    //   cluster: process.env.PUSHER_CLUSTER
-    // });
-    // 
-    // await pusher.trigger('mentions', 'new-mentions', {
-    //   mentions: mentions,
-    //   count: mentions.length,
-    //   timestamp: new Date().toISOString()
-    // });
+// Get today's date key for daily tracking
+function getTodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${DAILY_ARTICLES_KEY}:${year}-${month}-${day}`;
+}
+
+export default async function handler(req, res) {
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-  
-  // Or store in a Redis pub/sub channel for SSE
-  if (mentions.length > 0) {
-    try {
-      await redis.publish('mentions:updates', JSON.stringify({
-        type: 'new_mentions',
-        count: mentions.length,
-        mentions: mentions.slice(0, 5) // Send preview of first 5
-      }));
-    } catch (error) {
-      console.error('Error publishing update:', error);
+
+  try {
+    // Parse the webhook payload from Meltwater
+    // Expected structure: { request: {...}, documents: [...] }
+    const payload = req.body;
+
+    console.log('[Meltwater Webhook] Received payload:', {
+      hasRequest: !!payload.request,
+      hasDocuments: !!payload.documents,
+      documentCount: payload.documents?.length || 0,
+      hookId: payload.request?.hook_id,
+      companyId: payload.request?.company_id
+    });
+
+    // Verify this is from the correct search
+    // The search ID may be in payload.request.inputs
+    if (payload.request?.inputs) {
+      const searchInfo = JSON.stringify(payload.request.inputs);
+      console.log('[Meltwater Webhook] Search inputs:', searchInfo);
+
+      // Check if our search ID is referenced
+      if (!searchInfo.includes(ALLOWED_SEARCH_ID)) {
+        console.log(`[Meltwater Webhook] WARNING: Expected search ID ${ALLOWED_SEARCH_ID} not found in inputs`);
+      }
     }
+
+    // Extract documents array from payload
+    let documents = payload.documents || payload.docs || [];
+
+    if (documents.length === 0) {
+      console.log('[Meltwater Webhook] No documents in payload');
+      return res.status(200).json({
+        status: 'success',
+        message: 'No documents to process',
+        processed: 0,
+        stored: 0,
+        skipped: 0
+      });
+    }
+
+    console.log(`[Meltwater Webhook] Processing ${documents.length} documents`);
+
+    let processed = 0, stored = 0, skipped = 0;
+    const todayKey = getTodayKey();
+
+    for (const doc of documents) {
+      try {
+        processed++;
+
+        // Log the first document structure to understand the format
+        if (processed === 1) {
+          console.log('[Meltwater Webhook] First document keys:', Object.keys(doc));
+        }
+
+        // Extract article data - trying multiple field names based on Meltwater API variations
+        // Title extraction (similar to meltwater_collect.js)
+        const title = doc.content?.title || doc.title || doc.headline || doc.document_title || 'Untitled';
+
+        // URL/Link extraction
+        const link = doc.content?.url || doc.url || doc.link || doc.document_url || '#';
+
+        // Filter 1: AI keyword filtering - MUST have "ai" or "artificial intelligence" in title
+        const titleLower = title.toLowerCase();
+        if (!titleLower.includes('ai') && !titleLower.includes('artificial intelligence')) {
+          console.log(`[Meltwater Webhook] Skipping non-AI article: "${title}"`);
+          skipped++;
+          continue;
+        }
+
+        // Filter 2: Skip non-US articles
+        const country = doc.country || doc.media?.country || doc.source?.country || doc.source_country || '';
+        if (country && country.toLowerCase() !== 'us' && country.toLowerCase() !== 'usa' && country.toLowerCase() !== 'united states') {
+          console.log(`[Meltwater Webhook] Skipping non-US article from ${country}`);
+          skipped++;
+          continue;
+        }
+
+        // Extract summary (similar to meltwater_collect.js)
+        let extractedSummary = doc.summary ||
+                              doc.description ||
+                              doc.snippet ||
+                              doc.content?.summary ||
+                              doc.content?.description ||
+                              doc.content?.snippet ||
+                              doc.matched?.hit_sentence ||
+                              doc.content?.opening_text ||
+                              doc.content?.byline ||
+                              doc.document_summary ||
+                              '';
+
+        // Clean up the hit_sentence (remove leading "... " and trailing "...")
+        if (extractedSummary && typeof extractedSummary === 'string') {
+          extractedSummary = extractedSummary.replace(/^\.\.\.\s*/, '').replace(/\s*\.\.\.$/, '').trim();
+        }
+
+        // Extract source name
+        const source = doc.source?.name || doc.source_name || doc.media?.name || doc.source || 'Meltwater';
+
+        // Extract published date
+        const publishedDate = doc.published_date || doc.document?.published_date || doc.date || new Date().toISOString();
+
+        // Filter 3: Press release filtering
+        if (isPressRelease(title, extractedSummary, source)) {
+          console.log(`[Meltwater Webhook] Skipping press release: "${title}" from ${source}`);
+          skipped++;
+          continue;
+        }
+
+        // Filter 4: Deduplicate by canonical URL
+        const canon = normalizeUrl(link);
+        if (!canon) {
+          skipped++;
+          continue;
+        }
+
+        const addCanon = await redis.sadd(SEEN_LINK, canon);
+        if (addCanon !== 1) {
+          console.log(`[Meltwater Webhook] Duplicate URL skipped: ${canon}`);
+          skipped++;
+          continue; // Already stored
+        }
+
+        const mid = idFromCanonical(canon);
+        await redis.sadd(SEEN_ID, mid);
+
+        const ts = toEpoch(publishedDate);
+
+        // Extract reach/circulation metrics
+        const reach = doc.metrics?.reach || doc.metrics?.circulation || doc.source_reach || doc.reach || 0;
+
+        // Create mention object
+        const mention = {
+          id: mid,
+          canon,
+          section: 'Meltwater',
+          title: title,
+          link: link,
+          source: source,
+          summary: extractedSummary,
+          origin: 'meltwater_webhook',
+          published_ts: ts,
+          published: new Date(ts * 1000).toISOString(),
+          reach: reach,
+          sentiment: normalizeSentiment(doc),
+          sentiment_label: doc.sentiment || null,
+          searchid: ALLOWED_SEARCH_ID,
+          received_at: new Date().toISOString()
+        };
+
+        // Filter 5: Top 25 by reach per day
+        // Add to today's sorted set (sorted by reach, descending)
+        await redis.zadd(todayKey, {
+          score: reach,
+          member: JSON.stringify(mention)
+        });
+
+        // Set expiry on daily tracking key (expires after 2 days)
+        await redis.expire(todayKey, 2 * 24 * 60 * 60);
+
+        // Get count of articles in today's set
+        const todayCount = await redis.zcard(todayKey);
+
+        // If we have more than TOP_ARTICLES_LIMIT, remove the lowest reach articles
+        if (todayCount > TOP_ARTICLES_LIMIT) {
+          // Remove articles with lowest reach (keep top 25)
+          const toRemove = todayCount - TOP_ARTICLES_LIMIT;
+          await redis.zpopmin(todayKey, toRemove);
+          console.log(`[Meltwater Webhook] Removed ${toRemove} low-reach articles to maintain top ${TOP_ARTICLES_LIMIT} limit`);
+        }
+
+        // Check if this article made it into the top 25
+        const allArticles = await redis.zrange(todayKey, 0, -1);
+
+        // If this article is still in the set, add it to the main mentions set
+        const isInTopArticles = allArticles.some(a => {
+          try {
+            const parsed = JSON.parse(a);
+            return parsed.id === mid;
+          } catch {
+            return false;
+          }
+        });
+
+        if (isInTopArticles) {
+          // Store in main mentions set
+          await redis.zadd(ZSET, {
+            score: ts,
+            member: JSON.stringify(mention)
+          });
+
+          // Trim articles older than RETENTION_DAYS
+          const cutoffTimestamp = Math.floor(Date.now() / 1000) - (RETENTION_DAYS * 24 * 60 * 60);
+          await redis.zremrangebyscore(ZSET, '-inf', cutoffTimestamp);
+
+          stored++;
+          console.log(`[Meltwater Webhook] Stored (${stored}/${TOP_ARTICLES_LIMIT}): "${title}" from ${source} (reach: ${reach})`);
+        } else {
+          console.log(`[Meltwater Webhook] Article excluded (not in top ${TOP_ARTICLES_LIMIT} by reach): "${title}" (reach: ${reach})`);
+          skipped++;
+
+          // Remove from deduplication sets since we're not storing it
+          await redis.srem(SEEN_LINK, canon);
+          await redis.srem(SEEN_ID, mid);
+        }
+
+      } catch (error) {
+        console.error('[Meltwater Webhook] Error processing document:', error);
+        skipped++;
+      }
+    }
+
+    console.log(`[Meltwater Webhook] Complete: ${processed} processed, ${stored} stored, ${skipped} skipped`);
+
+    // Respond to Meltwater with 200 OK
+    res.status(200).json({
+      status: 'success',
+      processed,
+      stored,
+      skipped,
+      search_id: ALLOWED_SEARCH_ID,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('[Meltwater Webhook] Processing error:', error);
+
+    // Return 200 to prevent Meltwater from retrying
+    // Log the error for debugging
+    res.status(200).json({
+      status: 'error',
+      message: 'Internal processing error, logged for review'
+    });
   }
 }
