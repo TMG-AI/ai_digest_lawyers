@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online', // Perplexity's online model with web search
+        model: 'llama-3.1-sonar-large-128k-online',
         messages: [
           {
             role: 'system',
@@ -42,9 +42,7 @@ export default async function handler(req, res) {
           }
         ],
         temperature: 0.2,
-        max_tokens: 2000,
-        return_citations: true,
-        return_images: false
+        max_tokens: 2000
       })
     });
 
@@ -62,9 +60,17 @@ export default async function handler(req, res) {
 
     // Extract answer and citations
     const answer = data.choices?.[0]?.message?.content || 'No response from Perplexity';
-    const citations = data.citations || [];
 
-    console.log('[Perplexity Search] Success. Citations:', citations.length);
+    // Citations might be in different locations depending on Perplexity API version
+    const citations = data.citations || data.choices?.[0]?.citations || [];
+
+    console.log('[Perplexity Search] Success.');
+    console.log('[Perplexity Search] Response structure:', {
+      hasCitations: !!data.citations,
+      hasChoiceCitations: !!data.choices?.[0]?.citations,
+      citationsCount: citations.length,
+      model: data.model
+    });
 
     return res.status(200).json({
       ok: true,
