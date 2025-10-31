@@ -2,6 +2,7 @@
 // Collects newsletter RSS feeds and filters for AI/legal keywords
 import { Redis } from "@upstash/redis";
 import Parser from "rss-parser";
+import { isBlockedDomain, extractDomain } from "./blocked_domains.js";
 
 const redis = new Redis({
   url: process.env.KV1_REST_API_URL,
@@ -177,6 +178,13 @@ export default async function handler(req, res) {
           // Filter out press releases FIRST
           if (isPressRelease(title, sum, feedTitle)) {
             console.log(`[Newsletter RSS] Skipping press release: "${title}" from ${feedTitle}`);
+            skipped++;
+            continue;
+          }
+
+          // Filter out blocked domains (MFA sites)
+          if (isBlockedDomain(link)) {
+            console.log(`[Newsletter RSS] Skipping blocked domain: "${title}" from ${extractDomain(link)}`);
             skipped++;
             continue;
           }

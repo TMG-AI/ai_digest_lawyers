@@ -1,6 +1,7 @@
 import { Redis } from "@upstash/redis";
 import Parser from "rss-parser";
 import { Resend } from "resend";
+import { isBlockedDomain, extractDomain } from "./blocked_domains.js";
 
 // ---- clients ----
 const redis = new Redis({
@@ -174,6 +175,12 @@ export default async function handler(req, res) {
           // Filter out press releases
           if (isPressRelease(title, sum, source)) {
             console.log(`Skipping press release: "${title}" from ${source}`);
+            continue;
+          }
+
+          // Filter out blocked domains (MFA sites)
+          if (isBlockedDomain(link)) {
+            console.log(`Skipping blocked domain: "${title}" from ${extractDomain(link)}`);
             continue;
           }
 

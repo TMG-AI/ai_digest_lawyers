@@ -14,6 +14,7 @@
 // }
 
 import { Redis } from "@upstash/redis";
+import { isBlockedDomain, extractDomain } from "./blocked_domains.js";
 
 const redis = new Redis({
   url: process.env.KV1_REST_API_URL,
@@ -198,6 +199,13 @@ export default async function handler(req, res) {
         // Filter 3: Press release filtering
         if (isPressRelease(title, extractedSummary, source)) {
           console.log(`[Meltwater Webhook] Skipping press release: "${title}" from ${source}`);
+          skipped++;
+          continue;
+        }
+
+        // Filter 3.5: Block MFA domains
+        if (isBlockedDomain(link)) {
+          console.log(`[Meltwater Webhook] Blocked domain: "${title}" from ${extractDomain(link)}`);
           skipped++;
           continue;
         }

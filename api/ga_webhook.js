@@ -1,5 +1,6 @@
 // /api/ga_webhook.js
 import { Redis } from "@upstash/redis";
+import { isBlockedDomain, extractDomain } from "./blocked_domains.js";
 
 const redis = new Redis({
   url: process.env.KV1_REST_API_URL,
@@ -44,6 +45,12 @@ export default async function handler(req, res){
     const ts    = toEpoch(body.isoDate || body.published_at || body.date);
 
     if (!link) return res.status(200).json({ ok:true, stored:0, note:"missing link" });
+
+    // Filter out blocked domains (MFA sites)
+    if (isBlockedDomain(link)) {
+      console.log(`[GA Webhook] Blocked domain: "${title}" from ${extractDomain(link)}`);
+      return res.status(200).json({ ok:true, stored:0, note:"blocked domain" });
+    }
 
     // de-dupe by canonical URL
     const first = await redis.sadd(SEEN_URL, link);
