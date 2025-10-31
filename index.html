@@ -293,6 +293,7 @@
         <button id="chat-button" class="chat-button" onclick="askAI()" style="flex:1;min-width:150px">Ask AI</button>
         <button id="summarize-button" class="chat-button" onclick="summarizeWeekly()" style="flex:1;background:#5a7c50;min-width:150px">Summarize Weekly Articles</button>
         <button id="client-summary-button" class="chat-button" onclick="generateClientSummary()" style="flex:1;background:#6b8e5f;min-width:150px">Digest Summary</button>
+        <button id="perplexity-button" class="chat-button" onclick="searchPerplexity()" style="flex:1;background:#7c5fa0;min-width:120px" title="Search Perplexity for novel AI updates">Perplexity</button>
         <button id="clear-chat-button" class="chat-button" onclick="clearChat()" style="background:#999;min-width:120px" title="Clear the chat history">Clear Chat</button>
       </div>
 
@@ -976,6 +977,67 @@ ${articleText}`;
         }
       } catch (error) {
         alert(`Error saving summary: ${error.message}`);
+      }
+    }
+
+    // Perplexity Search function
+    async function searchPerplexity() {
+      const button = document.getElementById('chat-button');
+      const summarizeButton = document.getElementById('summarize-button');
+      const clientSummaryButton = document.getElementById('client-summary-button');
+      const perplexityButton = document.getElementById('perplexity-button');
+      const loading = document.getElementById('chat-loading');
+      const response = document.getElementById('chat-response');
+
+      // Show loading state
+      button.disabled = true;
+      summarizeButton.disabled = true;
+      clientSummaryButton.disabled = true;
+      perplexityButton.disabled = true;
+      loading.querySelector('span').textContent = 'Searching Perplexity for latest AI updates...';
+      loading.style.display = 'flex';
+      response.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/perplexity_search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (data.ok) {
+          const formattedAnswer = markdownToHtml(data.answer);
+
+          // Format citations if available
+          let citationsHtml = '';
+          if (data.citations && data.citations.length > 0) {
+            citationsHtml = '<br/><br/><strong>Sources:</strong><br/><ul style="margin:8px 0;padding-left:20px">';
+            data.citations.forEach((citation, idx) => {
+              citationsHtml += `<li style="margin-bottom:4px"><a href="${citation}" target="_blank" rel="noopener noreferrer" style="color:#4a6741;text-decoration:underline">${citation}</a></li>`;
+            });
+            citationsHtml += '</ul>';
+          }
+
+          response.innerHTML = `<strong>Perplexity Search Results:</strong><br/><br/>${formattedAnswer}${citationsHtml}`;
+          response.style.display = 'block';
+        } else {
+          throw new Error(data.error || 'Unknown error');
+        }
+      } catch (error) {
+        response.innerHTML = `<strong>Error:</strong> ${error.message}`;
+        response.style.display = 'block';
+      } finally {
+        button.disabled = false;
+        summarizeButton.disabled = false;
+        clientSummaryButton.disabled = false;
+        perplexityButton.disabled = false;
+        loading.querySelector('span').textContent = 'Analyzing articles...';
+        loading.style.display = 'none';
       }
     }
 
