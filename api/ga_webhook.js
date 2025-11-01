@@ -1,6 +1,7 @@
 // /api/ga_webhook.js
 import { Redis } from "@upstash/redis";
 import { isBlockedDomain, extractDomain } from "./blocked_domains.js";
+import { isInternationalArticle, getBlockReason } from "./international_filter.js";
 
 const redis = new Redis({
   url: process.env.KV1_REST_API_URL,
@@ -50,6 +51,12 @@ export default async function handler(req, res){
     if (isBlockedDomain(link)) {
       console.log(`[GA Webhook] Blocked domain: "${title}" from ${extractDomain(link)}`);
       return res.status(200).json({ ok:true, stored:0, note:"blocked domain" });
+    }
+
+    // Filter out international articles
+    if (isInternationalArticle(title, '', link, (new URL(link).hostname))) {
+      console.log(`[GA Webhook] Blocked international: "${title}" - ${getBlockReason(title, '', link, (new URL(link).hostname))}`);
+      return res.status(200).json({ ok:true, stored:0, note:"international" });
     }
 
     // de-dupe by canonical URL

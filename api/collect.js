@@ -2,6 +2,7 @@ import { Redis } from "@upstash/redis";
 import Parser from "rss-parser";
 import { Resend } from "resend";
 import { isBlockedDomain, extractDomain } from "./blocked_domains.js";
+import { isInternationalArticle, getBlockReason } from "./international_filter.js";
 
 // ---- clients ----
 const redis = new Redis({
@@ -181,6 +182,12 @@ export default async function handler(req, res) {
           // Filter out blocked domains (MFA sites)
           if (isBlockedDomain(link)) {
             console.log(`Skipping blocked domain: "${title}" from ${extractDomain(link)}`);
+            continue;
+          }
+
+          // Filter out international articles
+          if (isInternationalArticle(title, sum, link, source)) {
+            console.log(`Skipping international article: "${title}" - ${getBlockReason(title, sum, link, source)}`);
             continue;
           }
 
