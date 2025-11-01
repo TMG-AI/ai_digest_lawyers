@@ -236,7 +236,6 @@
       <a href="/meltwater.html" class="nav-item">Meltwater Dashboard</a>
       <a href="/client-summaries.html" class="nav-item">Digest Summaries</a>
       <a href="https://tmg-policy-pulse.lovable.app/" class="nav-item" target="_blank" rel="noopener">AI Policy Tracker</a>
-      <button class="nav-item" onclick="showFlaggedArticles()">Flagged Articles (<span id="nav-flagged-count">0</span>)</button>
     </div>
   </nav>
 
@@ -292,6 +291,7 @@
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button id="chat-button" class="chat-button" onclick="askAI()" style="flex:1;min-width:150px">Ask AI</button>
         <button id="summarize-button" class="chat-button" onclick="summarizeWeekly()" style="flex:1;background:#5a7c50;min-width:150px">Summarize Weekly Articles</button>
+        <button id="summarize-selected-button" class="chat-button" onclick="summarizeSelected()" style="flex:1;background:#8b7c50;min-width:150px;display:none" title="Summarize selected articles">Summarize Selected (<span id="selected-count">0</span>)</button>
         <button id="client-summary-button" class="chat-button" onclick="generateClientSummary()" style="flex:1;background:#6b8e5f;min-width:150px">Digest Summary</button>
         <button id="perplexity-button" class="chat-button" onclick="searchPerplexity()" style="flex:1;background:#7c5fa0;min-width:120px" title="Search Perplexity for novel AI updates">Perplexity</button>
         <button id="clear-chat-button" class="chat-button" onclick="clearChat()" style="background:#999;min-width:120px" title="Clear the chat history">Clear Chat</button>
@@ -429,8 +429,8 @@
           }
           const summary = summaryText ? `<div class="article-summary"></div>` : '';
 
-          // Check if article is flagged
-          const isFlagged = flaggedArticles.has(article.id);
+          // Check if article is selected for summary
+          const isSelected = selectedArticles.has(article.id);
 
           // Create card structure
           div.innerHTML=`
@@ -442,8 +442,7 @@
                        data-article-title="${article.title.replace(/"/g, '&quot;')}"
                        data-article-link="${article.link}"
                        data-article-source="${article.source}"
-                       ${isFlagged ? 'checked' : ''}
-                       title="Flag for intern summary">
+                       ${isSelected ? 'checked' : ''}>
                 <h3 class="card-title" style="flex:1;margin:0"><a href="${article.link}" target="_blank" rel="noopener"></a></h3>
               </div>
               <div class="meta">
@@ -474,13 +473,7 @@
           // Add event listener to checkbox after it's added to DOM
           const checkbox = div.querySelector('.flag-checkbox');
           checkbox.addEventListener('click', function() {
-            toggleFlag(
-              this.dataset.articleId,
-              this.dataset.articleTitle,
-              this.dataset.articleLink,
-              this.dataset.articleSource,
-              this
-            );
+            toggleSelection(this.dataset.articleId, this);
           });
           container.appendChild(div);
           resolve();
@@ -490,7 +483,8 @@
 
     let currentFilter = 'all';
     let allMentions = [];
-    let flaggedArticles = new Set(); // Track flagged article IDs
+    let selectedArticles = new Set(); // Track selected articles for summary
+    let allArticles = []; // Store all articles for summary
     let currentDateRange = 7; // Default: last 7 days
     let customDateFrom = null;
     let customDateTo = null;
@@ -1041,114 +1035,94 @@ ${articleText}`;
       }
     }
 
-    // Article flagging function
-    async function toggleFlag(articleId, title, link, source, checkbox) {
-      try {
-        if (checkbox.checked) {
-          // Flag the article
-          const res = await fetch('/api/flag_article', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ article_id: articleId, title, link, source })
-          });
+    // Article selection function for summary
+    function toggleSelection(articleId, checkbox) {
+      if (checkbox.checked) {
+        selectedArticles.add(articleId);
+      } else {
+        selectedArticles.delete(articleId);
+      }
+      updateSelectedCount();
+    }
 
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
+    // Update selected articles count and button visibility
+    function updateSelectedCount() {
+      const countEl = document.getElementById('selected-count');
+      const button = document.getElementById('summarize-selected-button');
 
-          if (data.ok) {
-            flaggedArticles.add(articleId);
-            updateFlaggedCount();
-            console.log('Article flagged:', articleId);
-          } else {
-            throw new Error(data.error || 'Failed to flag');
-          }
-        } else {
-          // Unflag the article
-          const res = await fetch('/api/flag_article', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ article_id: articleId })
-          });
+      if (countEl) {
+        countEl.textContent = selectedArticles.size;
+      }
 
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-
-          if (data.ok) {
-            flaggedArticles.delete(articleId);
-            updateFlaggedCount();
-            console.log('Article unflagged:', articleId);
-          } else {
-            throw new Error(data.error || 'Failed to unflag');
-          }
-        }
-      } catch (error) {
-        console.error('Flag toggle error:', error);
-        // Revert checkbox state on error
-        checkbox.checked = !checkbox.checked;
-        alert(`Error: ${error.message}`);
+      if (button) {
+        // Show button only if articles are selected
+        button.style.display = selectedArticles.size > 0 ? 'flex' : 'none';
       }
     }
 
-    // Load flagged articles on page load
-    async function loadFlaggedArticles() {
+    // Summarize selected articles
+    async function summarizeSelected() {
+      if (selectedArticles.size === 0) {
+        alert('Please select at least one article to summarize');
+        return;
+      }
+
+      const button = document.getElementById('chat-button');
+      const summarizeButton = document.getElementById('summarize-button');
+      const summarizeSelectedButton = document.getElementById('summarize-selected-button');
+      const clientSummaryButton = document.getElementById('client-summary-button');
+      const perplexityButton = document.getElementById('perplexity-button');
+      const loading = document.getElementById('chat-loading');
+      const response = document.getElementById('chat-response');
+
+      // Show loading state
+      button.disabled = true;
+      summarizeButton.disabled = true;
+      summarizeSelectedButton.disabled = true;
+      clientSummaryButton.disabled = true;
+      perplexityButton.disabled = true;
+      loading.querySelector('span').textContent = `Summarizing ${selectedArticles.size} selected articles...`;
+      loading.style.display = 'flex';
+      response.style.display = 'none';
+
       try {
-        const res = await fetch('/api/flag_article', { method: 'GET' });
-        if (!res.ok) return;
+        const articleIds = Array.from(selectedArticles);
+
+        const res = await fetch('/api/summarize_selected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ article_ids: articleIds })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
 
         const data = await res.json();
-        if (data.ok && data.articles) {
-          data.articles.forEach(article => {
-            flaggedArticles.add(article.id);
-          });
-          // Update flagged count
-          updateFlaggedCount();
+
+        if (data.ok) {
+          const formattedAnswer = markdownToHtml(data.answer);
+          response.innerHTML = `<strong>Summary of Selected Articles:</strong><br/><br/>${formattedAnswer}<br/><br/><small>Analyzed ${data.articles_analyzed} articles</small>`;
+          response.style.display = 'block';
+        } else {
+          throw new Error(data.error || 'Unknown error');
         }
       } catch (error) {
-        console.error('Error loading flagged articles:', error);
-      }
-    }
-
-    // Update flagged articles count
-    function updateFlaggedCount() {
-      const countEl = document.getElementById('nav-flagged-count');
-      if (countEl) {
-        countEl.textContent = flaggedArticles.size;
-      }
-    }
-
-    // Show only flagged articles
-    function showFlaggedArticles() {
-      if (flaggedArticles.size === 0) {
-        alert('No articles have been flagged yet');
-        return;
-      }
-
-      // Filter to show only flagged articles
-      const list = document.getElementById('list');
-      list.innerHTML = '';
-
-      const flaggedItems = allMentions.filter(m => flaggedArticles.has(m.id));
-
-      if (flaggedItems.length === 0) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon"></div>
-            <h3>No flagged articles found</h3>
-            <p>The flagged articles may not be in the current view.</p>
-            <button class="action-btn" onclick="loadMentions()">Show All Articles</button>
-          </div>`;
-        return;
-      }
-
-      document.getElementById('err').style.display = 'none';
-
-      for (let i = 0; i < flaggedItems.length; i++) {
-        addArticleCard(list, flaggedItems[i], i * 0.05);
+        response.innerHTML = `<strong>Error:</strong> ${error.message}`;
+        response.style.display = 'block';
+      } finally {
+        button.disabled = false;
+        summarizeButton.disabled = false;
+        summarizeSelectedButton.disabled = false;
+        clientSummaryButton.disabled = false;
+        perplexityButton.disabled = false;
+        loading.querySelector('span').textContent = 'Analyzing articles...';
+        loading.style.display = 'none';
       }
     }
 
     // Initialize
-    loadFlaggedArticles().then(() => loadMentions());
+    loadMentions();
   </script>
 
   <!-- Summary data loading only -->
