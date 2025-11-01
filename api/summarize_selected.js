@@ -52,9 +52,10 @@ export default async function handler(req, res) {
 
     console.log(`Summarizing ${selectedArticles.length} selected articles (requested: ${article_ids.length})`);
 
-    // Prepare article context with full content
-    const articleContext = selectedArticles.map(a => ({
-      id: a.id,
+    // Prepare article context with numbered citations
+    const articleContext = selectedArticles.map((a, idx) => ({
+      citation_id: idx + 1, // Citation number [1], [2], [3], etc.
+      article_id: a.id,
       title: a.title,
       source: a.source,
       published: a.published,
@@ -94,6 +95,13 @@ Article breakdown by source:
 - Newsletters: ${originCounts.newsletter || 0} articles
 
 Your task is to analyze these articles and provide a comprehensive summary. ONLY discuss sources that have articles available (non-zero count).
+
+CITATION REQUIREMENTS:
+- Use inline citations [1], [2], [3] to reference specific articles
+- Place citations immediately after statements that reference article content
+- Use the article's "citation_id" field from the context as the citation number
+- Multiple articles can be cited in one sentence: [1][2][3]
+- Every significant claim or fact should have at least one citation
 
 FORMATTING REQUIREMENTS:
 - Do NOT include title headers like "Summary:" or "Analysis:" - start directly with the content
@@ -135,6 +143,7 @@ ${JSON.stringify(articleContext, null, 2)}`
       answer,
       articles_analyzed: selectedArticles.length,
       articles_requested: article_ids.length,
+      sources: articleContext, // Return sources for citation rendering
       timestamp: new Date().toISOString()
     });
 

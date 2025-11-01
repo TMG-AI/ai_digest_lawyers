@@ -41,12 +41,14 @@ export default async function handler(req, res) {
 
     console.log(`Chat: Loading ${articles.length} articles for context`);
 
-    // Prepare article context (limit to key info to save tokens)
-    const articleContext = articles.map(a => ({
+    // Prepare article context with numbered citations
+    const articleContext = articles.map((a, idx) => ({
+      id: idx + 1, // Citation number [1], [2], [3], etc.
       title: a.title,
       source: a.source,
       published: a.published,
       origin: a.origin,
+      link: a.link,
       summary: a.summary?.substring(0, 200) // Limit summary length
     }));
 
@@ -80,6 +82,13 @@ Article breakdown by source:
 ${originCounts.newsletter ? '' : '\nNote: There are NO newsletter articles in this dataset - do not mention newsletters in your response.'}
 
 Answer questions about AI legal technology trends, case law, ethical considerations, tool adoption, or specific articles. ONLY discuss sources that have articles available (non-zero count).
+
+CITATION REQUIREMENTS:
+- Use inline citations [1], [2], [3] to reference specific articles
+- Place citations immediately after statements that reference article content
+- Use the article's "id" field from the context as the citation number
+- Multiple articles can be cited in one sentence: [1][2][3]
+- Every significant claim should have at least one citation
 
 FORMATTING REQUIREMENTS:
 - Do NOT include title headers like "Weekly Summary:" or "Comprehensive Summary" - start directly with the content
@@ -120,6 +129,7 @@ ${JSON.stringify(articleContext, null, 2)}`
       question,
       answer,
       articles_analyzed: articles.length,
+      sources: articleContext, // Return sources for citation rendering
       timestamp: new Date().toISOString()
     });
 

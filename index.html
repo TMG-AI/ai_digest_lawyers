@@ -716,7 +716,7 @@
         const data = await res.json();
 
         if (data.ok) {
-          const formattedAnswer = markdownToHtml(data.answer);
+          const formattedAnswer = renderWithCitations(data.answer, data.sources);
           response.innerHTML = `<strong>Answer:</strong><br/><br/>${formattedAnswer}<br/><br/><small>Analyzed ${data.articles_analyzed} articles</small>`;
           response.style.display = 'block';
         } else {
@@ -773,6 +773,43 @@
       return html;
     }
 
+    // Render citations and sources section
+    function renderWithCitations(answer, sources) {
+      if (!answer) return '';
+
+      // Convert markdown to HTML
+      let html = markdownToHtml(answer);
+
+      // Convert citations [1], [2], [3] to clickable links
+      // Match [1] through [999] - covers realistic citation counts
+      html = html.replace(/\[(\d{1,3})\]/g, (match, num) => {
+        return `<sup><a href="#source-${num}" style="color:#4a6741;text-decoration:none;font-weight:600">[${num}]</a></sup>`;
+      });
+
+      // Add sources section if sources exist
+      if (sources && sources.length > 0) {
+        html += '<br/><br/><hr style="border:none;border-top:1px solid rgba(139,195,74,.25);margin:16px 0"/>';
+        html += '<strong style="font-size:15px">Sources:</strong><br/>';
+        html += '<ol style="margin:8px 0;padding-left:20px;line-height:1.8">';
+
+        sources.forEach((source) => {
+          const citationId = source.id || source.citation_id; // Handle both formats
+          const title = source.title || 'Untitled';
+          const sourceText = source.source || 'Unknown source';
+          const link = source.link || '#';
+
+          html += `<li id="source-${citationId}" style="margin-bottom:8px">
+            <a href="${link}" target="_blank" rel="noopener" style="color:#4a6741;text-decoration:underline">${title}</a>
+            <span style="color:#666;font-size:12px"> - ${sourceText}</span>
+          </li>`;
+        });
+
+        html += '</ol>';
+      }
+
+      return html;
+    }
+
     // Summarize Weekly Articles function
     async function summarizeWeekly() {
       const input = document.getElementById('chat-input');
@@ -810,8 +847,8 @@
         const data = await res.json();
 
         if (data.ok) {
-          // Convert markdown to HTML
-          const formattedAnswer = markdownToHtml(data.answer);
+          // Convert markdown to HTML with citations
+          const formattedAnswer = renderWithCitations(data.answer, data.sources);
           response.innerHTML = `<strong>Weekly Summary:</strong><br/><br/>${formattedAnswer}<br/><br/><small>Analyzed ${data.articles_analyzed} articles from the past 7 days</small>`;
           response.style.display = 'block';
         } else {
@@ -1101,7 +1138,7 @@ ${articleText}`;
         const data = await res.json();
 
         if (data.ok) {
-          const formattedAnswer = markdownToHtml(data.answer);
+          const formattedAnswer = renderWithCitations(data.answer, data.sources);
           response.innerHTML = `<strong>Summary of Selected Articles:</strong><br/><br/>${formattedAnswer}<br/><br/><small>Analyzed ${data.articles_analyzed} articles</small>`;
           response.style.display = 'block';
         } else {
