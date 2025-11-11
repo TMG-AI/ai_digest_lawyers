@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AI Newsletters - AI in Practice</title>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      margin:0;
+      background:#fafbfc;
+      min-height:100vh;color:#1a1a1a
+    }
+    header{
+      background:linear-gradient(135deg,#4a6741 0%,#5a7c50 100%);
+      color:#fff;padding:24px 32px;box-shadow:0 4px 20px rgba(74,103,65,.15);
+      position:relative;overflow:hidden
+    }
+    header::before{
+      content:'';position:absolute;inset:0;
+      background:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>')
+    }
+    .header-content{position:relative;z-index:1}
+    .header-title{margin:0;font-size:28px;font-weight:600;letter-spacing:-.02em}
+    .header-subtitle{color:rgba(255,255,255,.8);font-size:14px;margin:4px 0 0 0;font-weight:400}
+
+    /* Navigation Bar */
+    .nav-bar{
+      background:#fff;
+      border-bottom:1px solid #e0e0e0;
+      box-shadow:0 2px 8px rgba(0,0,0,.05)
+    }
+    .nav-content{
+      max-width:1200px;
+      margin:0 auto;
+      display:flex;
+      gap:0;
+      padding:0
+    }
+    .nav-item{
+      padding:14px 24px;
+      color:#333;
+      text-decoration:none;
+      font-weight:500;
+      font-size:14px;
+      border-bottom:3px solid transparent;
+      transition:.2s;
+      cursor:pointer;
+      background:none;
+      border-left:none;
+      border-right:none;
+      border-top:none;
+    }
+    .nav-item:hover{
+      color:#4a6741;
+      background:rgba(139,195,74,.08)
+    }
+    .nav-item.active{
+      color:#4a6741;
+      border-bottom-color:#4a6741;
+      font-weight:600
+    }
+
+    .wrap{max-width:1200px;margin:0 auto;padding:24px 24px}
+
+    /* Date Navigation */
+    .date-nav{
+      background:#fff;
+      margin:20px auto;
+      max-width:1200px;
+      border-radius:12px;
+      box-shadow:0 2px 12px rgba(0,0,0,.06);
+      border:1px solid rgba(139,195,74,.12);
+      padding:16px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .date-nav-label{
+      font-weight:600;
+      color:#333;
+      font-size:14px;
+    }
+    .date-button{
+      padding:8px 16px;
+      border:1px solid #ddd;
+      background:#fff;
+      border-radius:8px;
+      cursor:pointer;
+      transition:.2s;
+      font-size:14px;
+      font-weight:500;
+      color:#333;
+    }
+    .date-button:hover{
+      background:#f5f5f5;
+      border-color:#4a6741;
+    }
+    .date-button.active{
+      background:#4a6741;
+      color:#fff;
+      border-color:#4a6741;
+    }
+
+    /* Newsletter Cards */
+    .date-section{
+      margin:24px auto;
+      max-width:1200px;
+    }
+    .date-header{
+      font-size:22px;
+      font-weight:600;
+      color:#333;
+      margin-bottom:16px;
+      padding:12px 16px;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
+      border:1px solid rgba(139,195,74,.12);
+    }
+    .newsletter-card{
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 2px 12px rgba(0,0,0,.06);
+      border:1px solid rgba(139,195,74,.12);
+      margin-bottom:16px;
+      overflow:hidden;
+      transition:.3s;
+    }
+    .newsletter-card:hover{
+      box-shadow:0 6px 20px rgba(0,0,0,.1);
+      border-color:rgba(139,195,74,.25);
+    }
+    .newsletter-header{
+      padding:20px;
+      cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background:rgba(139,195,74,.03);
+    }
+    .newsletter-header:hover{
+      background:rgba(139,195,74,.08);
+    }
+    .newsletter-title{
+      font-size:18px;
+      font-weight:600;
+      color:#333;
+      margin:0 0 8px 0;
+    }
+    .newsletter-meta{
+      font-size:13px;
+      color:#666;
+      display:flex;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    .newsletter-meta span{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .expand-icon{
+      font-size:24px;
+      color:#4a6741;
+      transition:.3s;
+    }
+    .newsletter-card.expanded .expand-icon{
+      transform:rotate(180deg);
+    }
+    .newsletter-content{
+      max-height:0;
+      overflow:hidden;
+      transition:max-height .3s ease;
+    }
+    .newsletter-card.expanded .newsletter-content{
+      max-height:10000px;
+    }
+    .newsletter-body{
+      padding:24px;
+      border-top:1px solid #e0e0e0;
+      white-space:pre-wrap;
+      font-size:14px;
+      line-height:1.7;
+      color:#333;
+    }
+
+    /* AI Chat Section */
+    .chat-section{
+      background:#fff;
+      margin:24px auto;
+      max-width:1200px;
+      border-radius:12px;
+      box-shadow:0 2px 12px rgba(0,0,0,.06);
+      border:1px solid rgba(139,195,74,.12);
+      padding:24px;
+    }
+    .chat-header{
+      font-size:20px;
+      font-weight:600;
+      color:#333;
+      margin:0 0 16px 0;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .chat-input{
+      width:100%;
+      min-height:80px;
+      padding:12px;
+      border:1px solid #ddd;
+      border-radius:8px;
+      font-size:14px;
+      font-family:inherit;
+      resize:vertical;
+    }
+    .chat-button{
+      padding:10px 20px;
+      background:#4a6741;
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:600;
+      transition:.2s;
+    }
+    .chat-button:hover{
+      background:#5a7c50;
+    }
+    .chat-button:disabled{
+      opacity:0.6;
+      cursor:not-allowed;
+    }
+    .chat-response{
+      margin-top:16px;
+      padding:16px;
+      background:#f9f9f9;
+      border-radius:8px;
+      border:1px solid #e0e0e0;
+      line-height:1.7;
+      display:none;
+    }
+    .chat-response.visible{
+      display:block;
+    }
+    .chat-loading{
+      display:none;
+      text-align:center;
+      padding:16px;
+      color:#666;
+      font-style:italic;
+    }
+    .chat-loading.visible{
+      display:block;
+    }
+
+    /* Empty State */
+    .empty-state{
+      text-align:center;
+      padding:60px 20px;
+      color:#666;
+    }
+    .empty-state-icon{
+      width:80px;
+      height:80px;
+      margin:0 auto 20px;
+      background:linear-gradient(135deg,rgba(139,195,74,.2) 0%,rgba(139,195,74,.1) 100%);
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:40px;
+    }
+    .empty-state h3{
+      font-size:20px;
+      margin:0 0 8px 0;
+      color:#333;
+    }
+    .empty-state p{
+      font-size:14px;
+      margin:0;
+    }
+
+    .error-message{
+      background:#fee;
+      color:#c33;
+      padding:12px;
+      border-radius:8px;
+      border:1px solid #fcc;
+      margin:16px 0;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <h1 class="header-title">AI Newsletters</h1>
+    <p class="header-subtitle">AI updates and insights from industry newsletters - filtered for legal relevance</p>
+  </div>
+</header>
+
+<nav class="nav-bar">
+  <div class="nav-content">
+    <a href="index.html" class="nav-item">AI Digest</a>
+    <a href="ai-newsletters.html" class="nav-item active">AI Newsletters</a>
+    <a href="client-summaries.html" class="nav-item">Client Summaries</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- Date Navigation -->
+  <div class="date-nav">
+    <span class="date-nav-label">View Date:</span>
+    <button class="date-button active" onclick="viewDate('all')">All Dates</button>
+    <div id="date-buttons-container"></div>
+  </div>
+
+  <!-- Error Message -->
+  <div id="error-message" class="error-message"></div>
+
+  <!-- Newsletters Container -->
+  <div id="newsletters-container"></div>
+
+  <!-- AI Chat Section -->
+  <div class="chat-section">
+    <h2 class="chat-header">
+      🤖 AI Assistant - Legal Insights from Newsletters
+    </h2>
+    <p style="margin:0 0 12px 0;font-size:14px;color:#666">
+      Ask questions about the newsletters or get summaries focused on legal practice, regulations, and law firm applications.
+    </p>
+    <textarea
+      id="chat-input"
+      class="chat-input"
+      placeholder="Examples:&#10;- Summarize all newsletters from this month with focus on legal regulations&#10;- What AI tools mentioned would be relevant for law firms?&#10;- Are there any data privacy concerns lawyers should know about?&#10;- What are the key AI compliance updates?"
+    ></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <button id="chat-button" class="chat-button" onclick="askAI()" style="flex:1;min-width:150px">Ask AI</button>
+      <button id="monthly-summary-button" class="chat-button" onclick="getMonthlyLegalSummary()" style="flex:1;background:#5a7c50;min-width:150px">Monthly Legal Summary</button>
+      <button id="clear-chat-button" class="chat-button" onclick="clearChat()" style="background:#999;min-width:120px">Clear</button>
+    </div>
+    <div id="chat-loading" class="chat-loading">Analyzing newsletters...</div>
+    <div id="chat-response" class="chat-response"></div>
+  </div>
+
+</div>
+
+<script>
+  let allNewslettersData = [];
+  let currentViewDate = 'all';
+
+  // Load newsletters on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    loadNewsletters();
+  });
+
+  async function loadNewsletters() {
+    try {
+      const response = await fetch('/api/get_newsletters');
+      if (!response.ok) throw new Error('Failed to load newsletters');
+
+      const data = await response.json();
+
+      if (!data.ok) throw new Error(data.error || 'Failed to load newsletters');
+
+      allNewslettersData = data.dates || [];
+
+      // Create date navigation buttons
+      createDateButtons(allNewslettersData);
+
+      // Display all newsletters
+      displayNewsletters('all');
+
+    } catch (error) {
+      console.error('Error loading newsletters:', error);
+      showError('Could not load newsletters. ' + error.message);
+    }
+  }
+
+  function createDateButtons(dateGroups) {
+    const container = document.getElementById('date-buttons-container');
+    container.innerHTML = '';
+
+    dateGroups.forEach(group => {
+      const button = document.createElement('button');
+      button.className = 'date-button';
+      button.textContent = group.date;
+      button.onclick = () => viewDate(group.date);
+      container.appendChild(button);
+    });
+  }
+
+  function viewDate(date) {
+    currentViewDate = date;
+
+    // Update active state on buttons
+    document.querySelectorAll('.date-button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    if (date === 'all') {
+      document.querySelector('.date-button').classList.add('active');
+    } else {
+      event.target.classList.add('active');
+    }
+
+    displayNewsletters(date);
+  }
+
+  function displayNewsletters(date) {
+    const container = document.getElementById('newsletters-container');
+    container.innerHTML = '';
+
+    let dataToDisplay = [];
+
+    if (date === 'all') {
+      dataToDisplay = allNewslettersData;
+    } else {
+      const group = allNewslettersData.find(g => g.date === date);
+      dataToDisplay = group ? [group] : [];
+    }
+
+    if (dataToDisplay.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📰</div>
+          <h3>No newsletters found</h3>
+          <p>No newsletters available for this date. Check back later!</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Render each date section
+    dataToDisplay.forEach(dateGroup => {
+      const section = document.createElement('div');
+      section.className = 'date-section';
+
+      const header = document.createElement('div');
+      header.className = 'date-header';
+      header.textContent = `${dateGroup.date} (${dateGroup.newsletters.length} newsletter${dateGroup.newsletters.length !== 1 ? 's' : ''})`;
+      section.appendChild(header);
+
+      // Render each newsletter card
+      dateGroup.newsletters.forEach(newsletter => {
+        const card = createNewsletterCard(newsletter);
+        section.appendChild(card);
+      });
+
+      container.appendChild(section);
+    });
+  }
+
+  function createNewsletterCard(newsletter) {
+    const card = document.createElement('div');
+    card.className = 'newsletter-card';
+    card.id = 'newsletter-' + newsletter.id;
+
+    const header = document.createElement('div');
+    header.className = 'newsletter-header';
+    header.onclick = () => toggleNewsletter(newsletter.id);
+
+    const info = document.createElement('div');
+
+    const title = document.createElement('div');
+    title.className = 'newsletter-title';
+    title.textContent = newsletter.newsletterName;
+    info.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'newsletter-meta';
+    meta.innerHTML = `
+      <span>📧 ${newsletter.from || 'Unknown'}</span>
+      <span>📝 ${newsletter.subject || 'No subject'}</span>
+      <span>🕐 ${new Date(newsletter.timestamp).toLocaleTimeString()}</span>
+    `;
+    info.appendChild(meta);
+
+    header.appendChild(info);
+
+    const icon = document.createElement('div');
+    icon.className = 'expand-icon';
+    icon.textContent = '▼';
+    header.appendChild(icon);
+
+    card.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = 'newsletter-content';
+
+    const body = document.createElement('div');
+    body.className = 'newsletter-body';
+    body.textContent = newsletter.fullText || 'No content available';
+    content.appendChild(body);
+
+    card.appendChild(content);
+
+    return card;
+  }
+
+  function toggleNewsletter(id) {
+    const card = document.getElementById('newsletter-' + id);
+    card.classList.toggle('expanded');
+  }
+
+  // AI Chat functions
+  async function askAI() {
+    const input = document.getElementById('chat-input');
+    const button = document.getElementById('chat-button');
+    const monthlySummaryButton = document.getElementById('monthly-summary-button');
+    const loading = document.getElementById('chat-loading');
+    const responseDiv = document.getElementById('chat-response');
+    const question = input.value.trim();
+
+    if (!question) {
+      alert('Please enter a question first');
+      return;
+    }
+
+    // Show loading state
+    button.disabled = true;
+    monthlySummaryButton.disabled = true;
+    loading.classList.add('visible');
+    responseDiv.classList.remove('visible');
+
+    try {
+      const body = { question };
+
+      // If viewing specific date, add it to context
+      if (currentViewDate !== 'all') {
+        body.specificDate = currentViewDate;
+      }
+
+      const response = await fetch('/api/chat_newsletters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) throw new Error('AI request failed');
+
+      const data = await response.json();
+
+      if (!data.ok) throw new Error(data.error || 'AI request failed');
+
+      // Display response
+      responseDiv.innerHTML = `
+        <div style="margin-bottom:12px">
+          <strong style="color:#4a6741">AI Analysis:</strong>
+          <span style="font-size:12px;color:#666;margin-left:8px">
+            (${data.newsletters_analyzed} newsletter${data.newsletters_analyzed !== 1 ? 's' : ''} analyzed)
+          </span>
+        </div>
+        <div style="line-height:1.8">${formatResponse(data.answer)}</div>
+      `;
+      responseDiv.classList.add('visible');
+
+    } catch (error) {
+      console.error('AI Chat error:', error);
+      responseDiv.innerHTML = `<div style="color:#c33">Error: ${error.message}</div>`;
+      responseDiv.classList.add('visible');
+    } finally {
+      button.disabled = false;
+      monthlySummaryButton.disabled = false;
+      loading.classList.remove('visible');
+    }
+  }
+
+  async function getMonthlyLegalSummary() {
+    const input = document.getElementById('chat-input');
+    input.value = 'Provide a comprehensive summary of all newsletters from the past month, focusing specifically on: 1) AI regulations and compliance that impact law firms, 2) Legal ethics considerations, 3) AI tools and applications relevant to legal practice, 4) Data privacy and security concerns, and 5) Any case law or precedents involving AI. Organize by theme and cite sources.';
+    await askAI();
+  }
+
+  function clearChat() {
+    document.getElementById('chat-input').value = '';
+    document.getElementById('chat-response').classList.remove('visible');
+  }
+
+  function formatResponse(text) {
+    // Convert markdown-style formatting to HTML
+    let formatted = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n- /g, '<br/>• ')
+      .replace(/\[(\d+)\]/g, '<sup style="color:#4a6741;font-weight:600">[$1]</sup>');
+
+    return '<p>' + formatted + '</p>';
+  }
+
+  function showError(message) {
+    const errorDiv = document.getElementById('error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
