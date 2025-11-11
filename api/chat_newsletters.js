@@ -31,14 +31,31 @@ export default async function handler(req, res) {
       // Get newsletters for specific date
       const dateKey = `newsletter:date:${specificDate}`;
       const dateData = await redis.get(dateKey);
-      const newsletterIds = dateData ? JSON.parse(dateData) : [];
+
+      let newsletterIds = [];
+      if (dateData) {
+        try {
+          newsletterIds = JSON.parse(dateData);
+          if (!Array.isArray(newsletterIds)) {
+            newsletterIds = [];
+          }
+        } catch (parseError) {
+          console.error(`[Chat Newsletters] Failed to parse ${dateKey}:`, parseError.message);
+          newsletterIds = [];
+        }
+      }
 
       const fetchedNewsletters = await Promise.all(
         newsletterIds.map(async (id) => {
-          const data = await redis.get(id);
-          if (!data) return null;
-          const newsletter = JSON.parse(data);
-          return { id, ...newsletter };
+          try {
+            const data = await redis.get(id);
+            if (!data) return null;
+            const newsletter = JSON.parse(data);
+            return { id, ...newsletter };
+          } catch (error) {
+            console.error(`[Chat Newsletters] Failed to parse newsletter ${id}:`, error.message);
+            return null;
+          }
         })
       );
 
@@ -50,19 +67,40 @@ export default async function handler(req, res) {
 
       // Fetch all newsletters
       for (const dateKey of allKeys) {
-        const dateData = await redis.get(dateKey);
-        const newsletterIds = dateData ? JSON.parse(dateData) : [];
+        try {
+          const dateData = await redis.get(dateKey);
 
-        const fetchedNewsletters = await Promise.all(
-          newsletterIds.map(async (id) => {
-            const data = await redis.get(id);
-            if (!data) return null;
-            const newsletter = JSON.parse(data);
-            return { id, ...newsletter };
-          })
-        );
+          let newsletterIds = [];
+          if (dateData) {
+            try {
+              newsletterIds = JSON.parse(dateData);
+              if (!Array.isArray(newsletterIds)) {
+                newsletterIds = [];
+              }
+            } catch (parseError) {
+              console.error(`[Chat Newsletters] Failed to parse ${dateKey}:`, parseError.message);
+              newsletterIds = [];
+            }
+          }
 
-        newsletters.push(...fetchedNewsletters.filter(n => n !== null));
+          const fetchedNewsletters = await Promise.all(
+            newsletterIds.map(async (id) => {
+              try {
+                const data = await redis.get(id);
+                if (!data) return null;
+                const newsletter = JSON.parse(data);
+                return { id, ...newsletter };
+              } catch (error) {
+                console.error(`[Chat Newsletters] Failed to parse newsletter ${id}:`, error.message);
+                return null;
+              }
+            })
+          );
+
+          newsletters.push(...fetchedNewsletters.filter(n => n !== null));
+        } catch (error) {
+          console.error(`[Chat Newsletters] Error processing ${dateKey}:`, error.message);
+        }
       }
     }
 

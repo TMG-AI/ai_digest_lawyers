@@ -20,7 +20,21 @@ export default async function handler(req, res) {
       // Fetch newsletters for specific date
       const dateKey = `newsletter:date:${date}`;
       const dateData = await redis.get(dateKey);
-      const newsletterIds = dateData ? JSON.parse(dateData) : [];
+
+      // Handle corrupted or invalid data
+      let newsletterIds = [];
+      if (dateData) {
+        try {
+          newsletterIds = JSON.parse(dateData);
+          if (!Array.isArray(newsletterIds)) {
+            console.warn(`[Get Newsletters] Invalid data format for ${dateKey}, expected array`);
+            newsletterIds = [];
+          }
+        } catch (parseError) {
+          console.error(`[Get Newsletters] Failed to parse ${dateKey}:`, parseError.message);
+          newsletterIds = [];
+        }
+      }
 
       if (newsletterIds.length === 0) {
         return res.status(200).json({
@@ -34,10 +48,15 @@ export default async function handler(req, res) {
       // Fetch all newsletters for this date
       const newsletters = await Promise.all(
         newsletterIds.map(async (id) => {
-          const data = await redis.get(id);
-          if (!data) return null;
-          const newsletter = JSON.parse(data);
-          return { id, ...newsletter };
+          try {
+            const data = await redis.get(id);
+            if (!data) return null;
+            const newsletter = JSON.parse(data);
+            return { id, ...newsletter };
+          } catch (error) {
+            console.error(`[Get Newsletters] Failed to parse newsletter ${id}:`, error.message);
+            return null;
+          }
         })
       );
 
@@ -67,23 +86,50 @@ export default async function handler(req, res) {
       // Fetch newsletters for each date
       const dateGroups = await Promise.all(
         allKeys.map(async (dateKey) => {
-          const date = dateKey.replace('newsletter:date:', '');
-          const dateData = await redis.get(dateKey);
-          const newsletterIds = dateData ? JSON.parse(dateData) : [];
+          try {
+            const date = dateKey.replace('newsletter:date:', '');
+            const dateData = await redis.get(dateKey);
 
-          const newsletters = await Promise.all(
-            newsletterIds.map(async (id) => {
-              const data = await redis.get(id);
-              if (!data) return null;
-              const newsletter = JSON.parse(data);
-              return { id, ...newsletter };
-            })
-          );
+            // Handle corrupted or invalid data
+            let newsletterIds = [];
+            if (dateData) {
+              try {
+                newsletterIds = JSON.parse(dateData);
+                if (!Array.isArray(newsletterIds)) {
+                  console.warn(`[Get Newsletters] Invalid data format for ${dateKey}, expected array`);
+                  newsletterIds = [];
+                }
+              } catch (parseError) {
+                console.error(`[Get Newsletters] Failed to parse ${dateKey}:`, parseError.message);
+                newsletterIds = [];
+              }
+            }
 
-          return {
-            date,
-            newsletters: newsletters.filter(n => n !== null)
-          };
+            const newsletters = await Promise.all(
+              newsletterIds.map(async (id) => {
+                try {
+                  const data = await redis.get(id);
+                  if (!data) return null;
+                  const newsletter = JSON.parse(data);
+                  return { id, ...newsletter };
+                } catch (error) {
+                  console.error(`[Get Newsletters] Failed to parse newsletter ${id}:`, error.message);
+                  return null;
+                }
+              })
+            );
+
+            return {
+              date,
+              newsletters: newsletters.filter(n => n !== null)
+            };
+          } catch (error) {
+            console.error(`[Get Newsletters] Error processing ${dateKey}:`, error.message);
+            return {
+              date: dateKey.replace('newsletter:date:', ''),
+              newsletters: []
+            };
+          }
         })
       );
 
