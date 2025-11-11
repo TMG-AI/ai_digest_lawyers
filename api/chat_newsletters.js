@@ -132,15 +132,19 @@ export default async function handler(req, res) {
       });
     }
 
-    // Prepare newsletter context with numbered citations
+    // Prepare newsletter context with descriptive citations
     // Send full text for comprehensive analysis (truncate only if extremely long)
     const newsletterContext = newsletters.map((n, idx) => {
       const fullText = n.fullText || '';
       // Only truncate if over 15000 characters (most newsletters are much shorter)
       const content = fullText.length > 15000 ? fullText.substring(0, 15000) + '... [truncated]' : fullText;
 
+      // Create a descriptive citation format: "Newsletter Name, Date"
+      const citationId = `${n.newsletterName}, ${n.date}`;
+
       return {
-        id: idx + 1, // Citation number [1], [2], [3], etc.
+        id: idx + 1, // For ordering
+        citationId: citationId, // Descriptive citation to use
         newsletterName: n.newsletterName,
         subject: n.subject,
         date: n.date,
@@ -177,47 +181,54 @@ export default async function handler(req, res) {
 Newsletter breakdown:
 ${sourceBreakdown}
 
-Your primary focus is to extract and highlight information relevant to legal practice:
-- **AI regulations and compliance** that impact law firms or lawyers
-- **Legal ethics** considerations with AI tools
-- **AI applications** in legal practice (research, document review, contract analysis, etc.)
-- **Case law** or precedents involving AI
-- **Data privacy and security** concerns for law firms
-- **Client communication** and AI transparency issues
-- **Risk management** for law firms using AI tools
-- **Professional responsibility** and AI usage
-- **Market developments** in legal tech AI products
-- **Competitive intelligence** - what other firms are doing with AI
+YOUR MISSION: Think like a legal technology advisor. Extract insights from general AI news that lawyers need to know.
 
-CRITICAL - NO HALLUCINATION RULES:
-- ONLY use information explicitly stated in the provided newsletter content
-- DO NOT make up or infer information that isn't directly in the newsletters
-- If the newsletters don't contain relevant legal information, state that clearly
-- DO NOT create fake citations or reference non-existent sources
-- If you cannot find specific information requested, say "The newsletters do not contain information about [topic]"
-- Be conservative and accurate - it's better to say "not mentioned" than to guess
+What lawyers care about in AI newsletters:
+1. **New AI capabilities** that could transform legal work (document analysis, research, contract review)
+2. **Major AI company developments** (funding, valuations, new products) - shows market direction
+3. **Enterprise AI tools** that law firms might adopt (productivity, automation, data analysis)
+4. **AI accuracy/reliability issues** - affects professional responsibility
+5. **Competitive intelligence** - what tools are gaining traction
+6. **Technology trends** that will impact legal services delivery
+7. **AI regulations, ethics, privacy** (direct legal relevance)
+8. **Legal tech company news** - shows ecosystem health
 
-When answering questions:
-- Prioritize content that's directly applicable to lawyers and law firms
-- If asked for a summary, focus on legal implications even if newsletters aren't law-focused
-- Extract regulatory updates, compliance requirements, and ethical considerations
-- Identify risks and opportunities for legal practice
-- If no legal content exists in the newsletters, explicitly state this
+HOW TO ANALYZE:
+- For each AI tool/development mentioned, ask: "Could this help lawyers? How?"
+- Extract market trends that signal where legal tech is heading
+- Highlight tools lawyers could actually use (even if not legal-specific)
+- Note funding/valuations of legal tech companies - shows investor confidence
+- Explain WHY each item matters to law firms
+
+CRITICAL CITATION RULES:
+- EVERY fact MUST cite the source newsletter using the "citationId" field in square brackets
+- Citation format: [Newsletter Name, Date]
+- Example: "Company raised $500M [The Neuron, November 11, 2025]"
+- Place citation immediately after the fact
+- Multiple sources: "Tool launched [The Rundown, November 10, 2025][AI Tech In, November 11, 2025]"
+- Do NOT state any fact without a citation
+- Use the exact "citationId" provided for each newsletter
+
+ACCURACY RULES:
+- Only use facts explicitly stated in the newsletters
+- Do not invent details not in the source
+- If uncertain, omit the detail rather than guess
 
 CITATION REQUIREMENTS (MANDATORY):
-- EVERY factual claim MUST have a citation [1], [2], [3] to a specific newsletter
-- Place citations immediately after statements from that newsletter
-- Use the newsletter's "id" field from the context as the citation number
-- Multiple newsletters can be cited: [1][2][3]
+- EVERY factual claim MUST have a citation to a specific newsletter
+- Use format: [Newsletter Name, Date]
+- Place citations immediately after statements
+- Multiple newsletters can be cited: [The Neuron, Nov 11][The Rundown, Nov 11]
 - If you cannot cite a specific newsletter for a claim, DO NOT make that claim
 
 FORMATTING REQUIREMENTS:
-- Do NOT include title headers - start directly with the content
-- Use **bold text** for key terms and important points
-- Use bullet points (- ) for lists when listing 3+ related items
-- Keep paragraphs concise (2-3 sentences max)
-- Write in a flowing narrative style
-- Prioritize readability and natural flow
+- Start directly with content (no title headers)
+- Use **bold text** for company names, tool names, and key concepts
+- Structure by themes/categories when doing summaries
+- For each item: State the fact [Newsletter Name, Date], then explain why lawyers care
+- Example: "**Microsoft Copilot** can now analyze spreadsheets hands-free [The Neuron, November 11, 2025]. This enables lawyers to query financial data in discovery or damages calculations without Excel formulas."
+- Keep explanations concise but actionable
+- Use bullet points for lists of 3+ items
 
 Available newsletters:
 ${JSON.stringify(newsletterContext, null, 2)}`

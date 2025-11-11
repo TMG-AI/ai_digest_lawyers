@@ -574,7 +574,7 @@
 
   async function getMonthlyLegalSummary() {
     const input = document.getElementById('chat-input');
-    input.value = 'Provide a comprehensive summary of all newsletters from the past month, focusing specifically on: 1) AI regulations and compliance that impact law firms, 2) Legal ethics considerations, 3) AI tools and applications relevant to legal practice, 4) Data privacy and security concerns, and 5) Any case law or precedents involving AI. Organize by theme and cite sources.';
+    input.value = 'Analyze all newsletters and create a comprehensive summary of AI developments that lawyers and law firms should know about. For each item: state the development with citation, then explain why it matters to legal practice. Include: new AI tools lawyers could use, major company developments showing market trends, enterprise AI capabilities relevant to law firms, legal tech funding news, and any regulations/ethics/privacy issues. Organize by themes and make every statement actionable - tell lawyers WHY they should care about each development.';
     await askAI();
   }
 
