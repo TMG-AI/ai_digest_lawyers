@@ -43,11 +43,45 @@ export default async function handler(req, res) {
     // Also maintain a date index for efficient querying
     const dateKey = `newsletter:date:${date}`;
     const existingNewsletters = await redis.get(dateKey);
-    const newsletterList = existingNewsletters ? JSON.parse(existingNewsletters) : [];
+
+    console.log('[Newsletter Ingest] Date key data:', {
+      dateKey,
+      existingType: typeof existingNewsletters,
+      existingValue: existingNewsletters
+    });
+
+    let newsletterList = [];
+    if (existingNewsletters) {
+      // Check if it's already an array (shouldn't happen with redis.get, but just in case)
+      if (Array.isArray(existingNewsletters)) {
+        newsletterList = existingNewsletters;
+      } else if (typeof existingNewsletters === 'string') {
+        try {
+          newsletterList = JSON.parse(existingNewsletters);
+          if (!Array.isArray(newsletterList)) {
+            console.error('[Newsletter Ingest] Parsed data is not an array, resetting to empty array');
+            newsletterList = [];
+          }
+        } catch (parseError) {
+          console.error('[Newsletter Ingest] Failed to parse existing newsletters:', parseError.message);
+          console.error('[Newsletter Ingest] Raw value:', existingNewsletters);
+          // Start fresh with empty array if data is corrupted
+          newsletterList = [];
+        }
+      }
+    }
+
     newsletterList.push(newsletterId);
 
     // Store date index with same 30-day TTL
-    await redis.setex(dateKey, 2592000, JSON.stringify(newsletterList));
+    const jsonToStore = JSON.stringify(newsletterList);
+    console.log('[Newsletter Ingest] Storing date index:', {
+      dateKey,
+      count: newsletterList.length,
+      jsonLength: jsonToStore.length
+    });
+
+    await redis.setex(dateKey, 2592000, jsonToStore);
 
     console.log('[Newsletter Ingest] Successfully stored:', {
       id: newsletterId,
