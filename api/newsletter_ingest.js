@@ -9,6 +9,30 @@ const redis = new Redis({
   token: process.env.KV1_REST_API_TOKEN,
 });
 
+// Clean newsletter text by removing image URLs and markup
+function cleanNewsletterText(text) {
+  if (!text) return text;
+
+  let cleaned = text;
+
+  // Remove "View image:" lines with URLs
+  cleaned = cleaned.replace(/View image:\s*\(https?:\/\/[^\)]+\)/gi, '');
+
+  // Remove "Follow image link:" lines with URLs
+  cleaned = cleaned.replace(/Follow image link:\s*\(https?:\/\/[^\)]+\)/gi, '');
+
+  // Remove "Caption:" lines (usually empty or just whitespace after)
+  cleaned = cleaned.replace(/Caption:\s*$/gmi, '');
+
+  // Clean up multiple consecutive newlines (more than 2)
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  // Trim leading/trailing whitespace
+  cleaned = cleaned.trim();
+
+  return cleaned;
+}
+
 export default async function handler(req, res) {
   // Only accept POST requests
   if (req.method !== 'POST') {
@@ -26,12 +50,15 @@ export default async function handler(req, res) {
       });
     }
 
+    // Clean the newsletter text before storing
+    const cleanedText = cleanNewsletterText(fullText);
+
     // Generate unique ID for this newsletter
     const newsletterId = `newsletter:${timestamp}:${newsletterName.replace(/\s+/g, '_')}`;
 
     // Store newsletter in Redis with 30-day TTL (2592000 seconds)
     await redis.setex(newsletterId, 2592000, JSON.stringify({
-      fullText,
+      fullText: cleanedText,
       newsletterName,
       subject: subject || '',
       from: from || '',
@@ -87,7 +114,9 @@ export default async function handler(req, res) {
       id: newsletterId,
       name: newsletterName,
       date,
-      textLength: fullText.length
+      originalLength: fullText.length,
+      cleanedLength: cleanedText.length,
+      removed: fullText.length - cleanedText.length
     });
 
     return res.status(200).json({
