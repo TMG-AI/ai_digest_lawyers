@@ -574,7 +574,7 @@
 
   async function getMonthlyLegalSummary() {
     const input = document.getElementById('chat-input');
-    input.value = 'Analyze all newsletters and create a comprehensive summary of AI developments that lawyers and law firms should know about. For each item: state the development with citation, then explain why it matters to legal practice. Include: new AI tools lawyers could use, major company developments showing market trends, enterprise AI capabilities relevant to law firms, legal tech funding news, and any regulations/ethics/privacy issues. Organize by themes and make every statement actionable - tell lawyers WHY they should care about each development.';
+    input.value = 'Create a comprehensive summary organized into three sections: 1) PRODUCTIVITY TOOLS - AI tools that help busy lawyers save time on emails, documents, research, writing, and routine tasks. 2) SECURITY & RISK WARNINGS - Any security issues, data breaches, privacy concerns, or problematic AI tools that could get law firms in trouble. 3) HALLUCINATION & ACCURACY - Reports of AI making mistakes, accuracy improvements, or techniques to reduce hallucinations. For each item: name the tool/issue with citation, explain the practical benefit or risk in 1-2 sentences. Focus on concrete outcomes like time savings or risk reduction.';
     await askAI();
   }
 

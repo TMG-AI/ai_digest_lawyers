@@ -181,24 +181,42 @@ export default async function handler(req, res) {
 Newsletter breakdown:
 ${sourceBreakdown}
 
-YOUR MISSION: Think like a legal technology advisor. Extract insights from general AI news that lawyers need to know.
+YOUR MISSION: You're advising busy lawyers who are drowning in emails and documents. Extract AI tools, capabilities, and warnings from these newsletters.
 
-What lawyers care about in AI newsletters:
-1. **New AI capabilities** that could transform legal work (document analysis, research, contract review)
-2. **Major AI company developments** (funding, valuations, new products) - shows market direction
-3. **Enterprise AI tools** that law firms might adopt (productivity, automation, data analysis)
-4. **AI accuracy/reliability issues** - affects professional responsibility
-5. **Competitive intelligence** - what tools are gaining traction
-6. **Technology trends** that will impact legal services delivery
-7. **AI regulations, ethics, privacy** (direct legal relevance)
-8. **Legal tech company news** - shows ecosystem health
+WHAT TO EXTRACT - Three Critical Categories:
 
-HOW TO ANALYZE:
-- For each AI tool/development mentioned, ask: "Could this help lawyers? How?"
-- Extract market trends that signal where legal tech is heading
-- Highlight tools lawyers could actually use (even if not legal-specific)
-- Note funding/valuations of legal tech companies - shows investor confidence
-- Explain WHY each item matters to law firms
+**1. PRODUCTIVITY TOOLS (Tools that save time):**
+- Email management (sorting, summarizing, auto-drafting responses)
+- Document processing (summarizing long PDFs, contracts, reports)
+- Research tools (finding information quickly without reading everything)
+- Writing assistance (drafting emails, memos, reports faster)
+- Meeting tools (transcription, summaries, action items)
+- Data analysis (spreadsheets, financial data, charts)
+- Task automation (repetitive work, workflows)
+- Organization tools (calendar, notes, file management)
+
+**2. SECURITY & RISK WARNINGS (What could get firms in trouble):**
+- Data breaches or security vulnerabilities in AI tools
+- Privacy concerns (what data AI tools collect/share)
+- Compliance issues (AI tools that violate regulations)
+- Tools that leak confidential information
+- AI services with problematic terms of service
+- Security best practices for using AI safely
+
+**3. HALLUCINATION & ACCURACY ISSUES (What could cause malpractice):**
+- Reports of AI making up information (hallucinations)
+- Accuracy problems in AI tools
+- Cases where AI gave wrong answers
+- Improvements in AI accuracy/reliability
+- Techniques to reduce hallucinations
+- Fact-checking capabilities
+- When AI should/shouldn't be trusted
+
+HOW TO PRESENT EACH ITEM:
+- State what it is and what it does [Citation]
+- Explain the practical benefit or risk in 1-2 sentences
+- Focus on time savings, risk reduction, or accuracy improvements
+- Example: "**Grammarly** launched business email triage [The Neuron, Nov 11]. It automatically sorts emails by urgency and drafts responses, potentially saving lawyers 1-2 hours daily on email management."
 
 CRITICAL CITATION RULES:
 - EVERY fact MUST cite the source newsletter using the "citationId" field in square brackets
@@ -221,14 +239,13 @@ CITATION REQUIREMENTS (MANDATORY):
 - Multiple newsletters can be cited: [The Neuron, Nov 11][The Rundown, Nov 11]
 - If you cannot cite a specific newsletter for a claim, DO NOT make that claim
 
-FORMATTING REQUIREMENTS:
-- Start directly with content (no title headers)
-- Use **bold text** for company names, tool names, and key concepts
-- Structure by themes/categories when doing summaries
-- For each item: State the fact [Newsletter Name, Date], then explain why lawyers care
-- Example: "**Microsoft Copilot** can now analyze spreadsheets hands-free [The Neuron, November 11, 2025]. This enables lawyers to query financial data in discovery or damages calculations without Excel formulas."
-- Keep explanations concise but actionable
-- Use bullet points for lists of 3+ items
+FORMATTING REQUIREMENTS FOR MONTHLY SUMMARY:
+- Organize into three sections: "Productivity Tools", "Security & Risk Warnings", "Hallucination & Accuracy Updates"
+- Use **bold text** for tool/company names
+- For each item: Tool name + what it does [Citation], then practical benefit/risk
+- Focus on concrete outcomes: "saves X hours", "reduces risk of Y", "improves accuracy by Z"
+- If no items exist for a category, state: "No significant [category] updates in these newsletters"
+- Keep each item to 2-3 sentences maximum
 
 Available newsletters:
 ${JSON.stringify(newsletterContext, null, 2)}`
