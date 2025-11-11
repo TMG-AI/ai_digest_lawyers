@@ -1,7 +1,12 @@
 // /api/chat_newsletters.js
 // AI Assistant for analyzing AI newsletters with focus on legal insights
 
-import { kv } from '@vercel/kv';
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+  url: process.env.KV1_REST_API_URL,
+  token: process.env.KV1_REST_API_TOKEN,
+});
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,12 +30,15 @@ export default async function handler(req, res) {
     if (specificDate) {
       // Get newsletters for specific date
       const dateKey = `newsletter:date:${specificDate}`;
-      const newsletterIds = await kv.get(dateKey) || [];
+      const dateData = await redis.get(dateKey);
+      const newsletterIds = dateData ? JSON.parse(dateData) : [];
 
       const fetchedNewsletters = await Promise.all(
         newsletterIds.map(async (id) => {
-          const newsletter = await kv.get(id);
-          return newsletter ? { id, ...newsletter } : null;
+          const data = await redis.get(id);
+          if (!data) return null;
+          const newsletter = JSON.parse(data);
+          return { id, ...newsletter };
         })
       );
 
@@ -38,26 +46,19 @@ export default async function handler(req, res) {
 
     } else {
       // Get all newsletters from past month
-      const allKeys = [];
-      let cursor = 0;
-
-      do {
-        const result = await kv.scan(cursor, {
-          match: 'newsletter:date:*',
-          count: 100
-        });
-        cursor = result[0];
-        allKeys.push(...result[1]);
-      } while (cursor !== 0);
+      const allKeys = await redis.keys('newsletter:date:*');
 
       // Fetch all newsletters
       for (const dateKey of allKeys) {
-        const newsletterIds = await kv.get(dateKey) || [];
+        const dateData = await redis.get(dateKey);
+        const newsletterIds = dateData ? JSON.parse(dateData) : [];
 
         const fetchedNewsletters = await Promise.all(
           newsletterIds.map(async (id) => {
-            const newsletter = await kv.get(id);
-            return newsletter ? { id, ...newsletter } : null;
+            const data = await redis.get(id);
+            if (!data) return null;
+            const newsletter = JSON.parse(data);
+            return { id, ...newsletter };
           })
         );
 

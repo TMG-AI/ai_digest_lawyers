@@ -2,7 +2,12 @@
 // Webhook endpoint to receive AI newsletters from n8n
 // Stores newsletters with 30-day TTL for monthly analysis
 
-import { kv } from '@vercel/kv';
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+  url: process.env.KV1_REST_API_URL,
+  token: process.env.KV1_REST_API_TOKEN,
+});
 
 export default async function handler(req, res) {
   // Only accept POST requests
@@ -24,8 +29,8 @@ export default async function handler(req, res) {
     // Generate unique ID for this newsletter
     const newsletterId = `newsletter:${timestamp}:${newsletterName.replace(/\s+/g, '_')}`;
 
-    // Store newsletter in KV with 30-day TTL (2592000 seconds)
-    await kv.set(newsletterId, {
+    // Store newsletter in Redis with 30-day TTL (2592000 seconds)
+    await redis.setex(newsletterId, 2592000, JSON.stringify({
       fullText,
       newsletterName,
       subject: subject || '',
@@ -33,19 +38,16 @@ export default async function handler(req, res) {
       timestamp,
       date,
       ingested: new Date().toISOString()
-    }, {
-      ex: 2592000 // 30 days in seconds
-    });
+    }));
 
     // Also maintain a date index for efficient querying
     const dateKey = `newsletter:date:${date}`;
-    const existingNewsletters = await kv.get(dateKey) || [];
-    existingNewsletters.push(newsletterId);
+    const existingNewsletters = await redis.get(dateKey);
+    const newsletterList = existingNewsletters ? JSON.parse(existingNewsletters) : [];
+    newsletterList.push(newsletterId);
 
     // Store date index with same 30-day TTL
-    await kv.set(dateKey, existingNewsletters, {
-      ex: 2592000
-    });
+    await redis.setex(dateKey, 2592000, JSON.stringify(newsletterList));
 
     console.log('[Newsletter Ingest] Successfully stored:', {
       id: newsletterId,

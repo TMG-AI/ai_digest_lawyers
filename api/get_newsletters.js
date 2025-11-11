@@ -1,7 +1,12 @@
 // /api/get_newsletters.js
 // Fetch AI newsletters by date or all from past month
 
-import { kv } from '@vercel/kv';
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+  url: process.env.KV1_REST_API_URL,
+  token: process.env.KV1_REST_API_TOKEN,
+});
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -14,7 +19,8 @@ export default async function handler(req, res) {
     if (date) {
       // Fetch newsletters for specific date
       const dateKey = `newsletter:date:${date}`;
-      const newsletterIds = await kv.get(dateKey) || [];
+      const dateData = await redis.get(dateKey);
+      const newsletterIds = dateData ? JSON.parse(dateData) : [];
 
       if (newsletterIds.length === 0) {
         return res.status(200).json({
@@ -28,8 +34,10 @@ export default async function handler(req, res) {
       // Fetch all newsletters for this date
       const newsletters = await Promise.all(
         newsletterIds.map(async (id) => {
-          const newsletter = await kv.get(id);
-          return newsletter ? { id, ...newsletter } : null;
+          const data = await redis.get(id);
+          if (!data) return null;
+          const newsletter = JSON.parse(data);
+          return { id, ...newsletter };
         })
       );
 
@@ -45,18 +53,8 @@ export default async function handler(req, res) {
 
     } else {
       // Fetch all newsletters from past month, grouped by date
-      // Scan for all newsletter date keys
-      const allKeys = [];
-      let cursor = 0;
-
-      do {
-        const result = await kv.scan(cursor, {
-          match: 'newsletter:date:*',
-          count: 100
-        });
-        cursor = result[0];
-        allKeys.push(...result[1]);
-      } while (cursor !== 0);
+      // Get all newsletter date keys
+      const allKeys = await redis.keys('newsletter:date:*');
 
       if (allKeys.length === 0) {
         return res.status(200).json({
@@ -70,12 +68,15 @@ export default async function handler(req, res) {
       const dateGroups = await Promise.all(
         allKeys.map(async (dateKey) => {
           const date = dateKey.replace('newsletter:date:', '');
-          const newsletterIds = await kv.get(dateKey) || [];
+          const dateData = await redis.get(dateKey);
+          const newsletterIds = dateData ? JSON.parse(dateData) : [];
 
           const newsletters = await Promise.all(
             newsletterIds.map(async (id) => {
-              const newsletter = await kv.get(id);
-              return newsletter ? { id, ...newsletter } : null;
+              const data = await redis.get(id);
+              if (!data) return null;
+              const newsletter = JSON.parse(data);
+              return { id, ...newsletter };
             })
           );
 
