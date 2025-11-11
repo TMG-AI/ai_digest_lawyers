@@ -34,14 +34,19 @@ export default async function handler(req, res) {
 
       let newsletterIds = [];
       if (dateData) {
-        try {
-          newsletterIds = JSON.parse(dateData);
-          if (!Array.isArray(newsletterIds)) {
+        // Check if already an array (Upstash auto-deserializes)
+        if (Array.isArray(dateData)) {
+          newsletterIds = dateData;
+        } else if (typeof dateData === 'string') {
+          try {
+            newsletterIds = JSON.parse(dateData);
+            if (!Array.isArray(newsletterIds)) {
+              newsletterIds = [];
+            }
+          } catch (parseError) {
+            console.error(`[Chat Newsletters] Failed to parse ${dateKey}:`, parseError.message);
             newsletterIds = [];
           }
-        } catch (parseError) {
-          console.error(`[Chat Newsletters] Failed to parse ${dateKey}:`, parseError.message);
-          newsletterIds = [];
         }
       }
 
@@ -50,7 +55,8 @@ export default async function handler(req, res) {
           try {
             const data = await redis.get(id);
             if (!data) return null;
-            const newsletter = JSON.parse(data);
+            // Upstash auto-deserializes, so data might already be an object
+            const newsletter = typeof data === 'string' ? JSON.parse(data) : data;
             return { id, ...newsletter };
           } catch (error) {
             console.error(`[Chat Newsletters] Failed to parse newsletter ${id}:`, error.message);
@@ -72,14 +78,19 @@ export default async function handler(req, res) {
 
           let newsletterIds = [];
           if (dateData) {
-            try {
-              newsletterIds = JSON.parse(dateData);
-              if (!Array.isArray(newsletterIds)) {
+            // Check if already an array (Upstash auto-deserializes)
+            if (Array.isArray(dateData)) {
+              newsletterIds = dateData;
+            } else if (typeof dateData === 'string') {
+              try {
+                newsletterIds = JSON.parse(dateData);
+                if (!Array.isArray(newsletterIds)) {
+                  newsletterIds = [];
+                }
+              } catch (parseError) {
+                console.error(`[Chat Newsletters] Failed to parse ${dateKey}:`, parseError.message);
                 newsletterIds = [];
               }
-            } catch (parseError) {
-              console.error(`[Chat Newsletters] Failed to parse ${dateKey}:`, parseError.message);
-              newsletterIds = [];
             }
           }
 
@@ -88,7 +99,8 @@ export default async function handler(req, res) {
               try {
                 const data = await redis.get(id);
                 if (!data) return null;
-                const newsletter = JSON.parse(data);
+                // Upstash auto-deserializes, so data might already be an object
+                const newsletter = typeof data === 'string' ? JSON.parse(data) : data;
                 return { id, ...newsletter };
               } catch (error) {
                 console.error(`[Chat Newsletters] Failed to parse newsletter ${id}:`, error.message);
