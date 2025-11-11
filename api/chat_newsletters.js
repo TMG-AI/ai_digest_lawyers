@@ -133,15 +133,21 @@ export default async function handler(req, res) {
     }
 
     // Prepare newsletter context with numbered citations
-    const newsletterContext = newsletters.map((n, idx) => ({
-      id: idx + 1, // Citation number [1], [2], [3], etc.
-      newsletterName: n.newsletterName,
-      subject: n.subject,
-      date: n.date,
-      from: n.from,
-      // Include first 1500 characters of full text for context
-      excerpt: n.fullText?.substring(0, 1500) + (n.fullText?.length > 1500 ? '...' : '')
-    }));
+    // Send full text for comprehensive analysis (truncate only if extremely long)
+    const newsletterContext = newsletters.map((n, idx) => {
+      const fullText = n.fullText || '';
+      // Only truncate if over 15000 characters (most newsletters are much shorter)
+      const content = fullText.length > 15000 ? fullText.substring(0, 15000) + '... [truncated]' : fullText;
+
+      return {
+        id: idx + 1, // Citation number [1], [2], [3], etc.
+        newsletterName: n.newsletterName,
+        subject: n.subject,
+        date: n.date,
+        from: n.from,
+        fullContent: content
+      };
+    });
 
     // Count newsletters by name
     const nameCounts = newsletters.reduce((acc, n) => {
@@ -183,18 +189,27 @@ Your primary focus is to extract and highlight information relevant to legal pra
 - **Market developments** in legal tech AI products
 - **Competitive intelligence** - what other firms are doing with AI
 
+CRITICAL - NO HALLUCINATION RULES:
+- ONLY use information explicitly stated in the provided newsletter content
+- DO NOT make up or infer information that isn't directly in the newsletters
+- If the newsletters don't contain relevant legal information, state that clearly
+- DO NOT create fake citations or reference non-existent sources
+- If you cannot find specific information requested, say "The newsletters do not contain information about [topic]"
+- Be conservative and accurate - it's better to say "not mentioned" than to guess
+
 When answering questions:
 - Prioritize content that's directly applicable to lawyers and law firms
 - If asked for a summary, focus on legal implications even if newsletters aren't law-focused
 - Extract regulatory updates, compliance requirements, and ethical considerations
 - Identify risks and opportunities for legal practice
+- If no legal content exists in the newsletters, explicitly state this
 
-CITATION REQUIREMENTS:
-- Use inline citations [1], [2], [3] to reference specific newsletters
+CITATION REQUIREMENTS (MANDATORY):
+- EVERY factual claim MUST have a citation [1], [2], [3] to a specific newsletter
 - Place citations immediately after statements from that newsletter
 - Use the newsletter's "id" field from the context as the citation number
 - Multiple newsletters can be cited: [1][2][3]
-- Every significant claim should have at least one citation
+- If you cannot cite a specific newsletter for a claim, DO NOT make that claim
 
 FORMATTING REQUIREMENTS:
 - Do NOT include title headers - start directly with the content
@@ -212,8 +227,8 @@ ${JSON.stringify(newsletterContext, null, 2)}`
             content: question
           }
         ],
-        temperature: 0.7,
-        max_tokens: 2500
+        temperature: 0.3,  // Lower temperature to reduce hallucination
+        max_tokens: 3000
       })
     });
 
