@@ -1,5 +1,6 @@
 // /api/newsletter_ingest.js
 // Webhook endpoint to receive AI newsletters from n8n
+// Stores newsletters with 30-day TTL for monthly analysis
 
 import { kv } from '@vercel/kv';
 
